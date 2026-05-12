@@ -1,0 +1,31 @@
+node_modules
+.pnpm-store
+
+# next
+.next
+out
+next-env.d.ts
+
+# turbo
+.turbo
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# vercel
+.vercel
+
+# editors
+.vscode
+.idea
+.DS_Store
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="24" fill="#0b0d12"/>
+  <circle cx="64" cy="52" r="20" fill="none" stroke="#7c5cff" stroke-width="6"/>
+  <path d="M40 100 Q40 80 64 80 Q88 80 88 100" fill="none" stroke="#7c5cff" stroke-width="6" stroke-linecap="round"/>
+  <text x="64" y="120" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#e6e9f2">OAuth · T3OS</text>
+</svg>
