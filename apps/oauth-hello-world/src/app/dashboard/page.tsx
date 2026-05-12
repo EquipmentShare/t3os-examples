@@ -217,7 +217,10 @@ export default async function Dashboard() {
             Sign out
           </button>
         </form>
-        <a className="button button-secondary" href={env.revokeUrl()}>
+        <a
+          className="button button-secondary"
+          href={`${env.webUrlBase()}/app/${session.workspaceId}/settings/connected-apps`}
+        >
           Manage / revoke access in T3OS →
         </a>
       </div>

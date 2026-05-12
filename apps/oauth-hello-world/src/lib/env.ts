@@ -16,5 +16,7 @@ export const env = {
   auth0ClientSecret: () => required('AUTH0_CLIENT_SECRET'),
   graphqlUrl: () => required('T3OS_GRAPHQL_URL'),
   redirectUri: () => required('OAUTH_REDIRECT_URI'),
-  revokeUrl: () => required('T3OS_REVOKE_URL'),
+  // Base URL of the T3OS web app — used to construct deep links into
+  // workspace-scoped settings pages (connected-apps, installed-apps, etc.).
+  webUrlBase: () => required('T3OS_WEB_URL_BASE'),
 };

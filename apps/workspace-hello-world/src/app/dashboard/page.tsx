@@ -73,7 +73,7 @@ export default async function Dashboard() {
     queryError = e instanceof Error ? e.message : String(e);
   }
 
-  const manageUrl = `${env.workspaceSettingsUrlBase()}/app/${session.workspaceId}/settings`;
+  const manageUrl = `${env.webUrlBase()}/app/${session.workspaceId}/settings/installed-apps`;
 
   return (
     <main>

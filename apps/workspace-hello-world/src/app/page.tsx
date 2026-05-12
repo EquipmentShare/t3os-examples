@@ -29,7 +29,7 @@ export default async function Home({
   // workspace baked in). For this hello-world, where the entry point is
   // an anonymous landing page, we expose a small form that collects the
   // workspace id and submits it as a GET to T3OS's /oauth/install.
-  const installFormAction = `${env.installUrlBase()}/oauth/install`;
+  const installFormAction = `${env.webUrlBase()}/oauth/install`;
 
   return (
     <main>

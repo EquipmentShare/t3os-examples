@@ -10,8 +10,10 @@ export const env = {
   graphqlUrl: () => required('T3OS_GRAPHQL_URL'),
   jwksUrl: () => required('T3OS_JWKS_URL'),
   installTokenIssuer: () => required('T3OS_INSTALL_TOKEN_ISSUER'),
-  installUrlBase: () => required('T3OS_INSTALL_URL_BASE'),
-  workspaceSettingsUrlBase: () => required('T3OS_WORKSPACE_SETTINGS_URL_BASE'),
+  // Base URL of the T3OS web app — used for the install screen
+  // (`/oauth/install`) and the workspace-scoped installed-apps settings
+  // page (`/app/<workspaceId>/settings/installed-apps`).
+  webUrlBase: () => required('T3OS_WEB_URL_BASE'),
   appId: () => required('T3OS_APP_ID'),
   installCallbackUrl: () => required('INSTALL_CALLBACK_URL'),
 };
