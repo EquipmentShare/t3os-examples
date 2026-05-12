@@ -22,8 +22,14 @@ export default async function Home({
 
   const { error } = await searchParams;
 
-  // Where T3OS hosts its install screen for this app.
-  const installUrl = `${env.installUrlBase()}/oauth/install?appId=${env.appId()}`;
+  // The T3OS install screen requires BOTH `appId` and `workspaceId` in the
+  // URL — it has no UI for picking a workspace. In production marketplace
+  // flows the user lands on the install page from inside a workspace
+  // context (the URL is constructed by T3OS itself, with the active
+  // workspace baked in). For this hello-world, where the entry point is
+  // an anonymous landing page, we expose a small form that collects the
+  // workspace id and submits it as a GET to T3OS's /oauth/install.
+  const installFormAction = `${env.installUrlBase()}/oauth/install`;
 
   return (
     <main>
@@ -41,10 +47,13 @@ export default async function Home({
       )}
 
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>What clicking install does</h2>
+        <h2 style={{ marginTop: 0 }}>What submitting the form does</h2>
         <ol>
-          <li>Sends you to T3OS&apos;s hosted install screen for this app.</li>
-          <li>You sign in to T3OS (if not already) and pick a workspace you can install into.</li>
+          <li>
+            Sends you to T3OS&apos;s hosted install screen with <code>appId</code> and{' '}
+            <code>workspaceId</code> in the URL.
+          </li>
+          <li>You sign in to T3OS (if not already) and click Install.</li>
           <li>
             T3OS&apos;s IAM service calls <code>installWorkspaceApp</code>, which mints a
             workspace-scoped API key and packages it inside a one-shot RS256 JWT.
@@ -59,17 +68,50 @@ export default async function Home({
         </ol>
       </div>
 
-      <div className="actions">
-        <a className="button" href={installUrl}>
-          Install in your workspace
-        </a>
-        <a
-          className="button button-secondary"
-          href="https://github.com/EquipmentShare/t3os-examples/tree/main/apps/workspace-hello-world"
+      <form action={installFormAction} method="get" className="card" style={{ marginTop: '1.5rem' }}>
+        <h2 style={{ marginTop: 0 }}>Install in your workspace</h2>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+          Paste the id of any T3OS workspace you have admin access to. You can find it in any T3OS
+          URL: <code>https://erp.estrack.com/app/&lt;workspace_id&gt;/...</code>
+        </p>
+        <input type="hidden" name="appId" value={env.appId()} />
+        <label
+          htmlFor="workspaceId"
+          style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}
         >
-          View source
-        </a>
-      </div>
+          Workspace id
+        </label>
+        <input
+          id="workspaceId"
+          type="text"
+          name="workspaceId"
+          required
+          placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+          pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+          style={{
+            width: '100%',
+            padding: '0.55rem 0.75rem',
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+            borderRadius: 6,
+            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+            fontSize: '0.875rem',
+            marginBottom: '1rem',
+          }}
+        />
+        <div className="actions" style={{ marginTop: 0 }}>
+          <button type="submit" className="button">
+            Continue to T3OS &rarr;
+          </button>
+          <a
+            className="button button-secondary"
+            href="https://github.com/EquipmentShare/t3os-examples/tree/main/apps/workspace-hello-world"
+          >
+            View source
+          </a>
+        </div>
+      </form>
 
       <div className="footer">
         <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·{' '}
