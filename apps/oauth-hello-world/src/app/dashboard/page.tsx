@@ -14,12 +14,12 @@ interface WorkspaceData {
 export default async function Dashboard() {
   const session = await getSession();
   if (!session.accessToken || !session.user || !session.workspaceId) {
-    // Partial session (e.g. left over from an older version of this code
-    // that stored different keys). Destroy it before bouncing so /'s
-    // "if session.accessToken redirect to /dashboard" guard doesn't send
-    // us right back here in a loop.
-    await session.destroy();
-    redirect('/');
+    // No session, OR a partial session (e.g. left over from an older
+    // version of this code that stored different keys). Bounce to
+    // /sign-out, which is a Route Handler — Server Components in Next.js
+    // 15 can READ cookies but can't MODIFY them, so session.destroy()
+    // here would throw. /sign-out clears the cookie and redirects to /.
+    redirect('/sign-out');
   }
 
   // Refresh the token if it's about to expire. Returns null if the grant

@@ -9,12 +9,20 @@ import { getSession } from '@/lib/session';
 export async function GET() {
   const session = await getSession();
 
+  // Destroy any stale session data (e.g. tokens from a previous flow, or
+  // a partial session from an older version of the code) so we start
+  // fresh. We're in a Route Handler so cookie modification is allowed.
+  await session.destroy();
+  // After destroy() the session object is empty — reassign via getSession()
+  // so the new pkce/state writes are sealed into a fresh cookie.
+  const fresh = await getSession();
+
   const { verifier, challenge } = generatePkcePair();
   const state = generateState();
 
-  session.pkceVerifier = verifier;
-  session.oauthState = state;
-  await session.save();
+  fresh.pkceVerifier = verifier;
+  fresh.oauthState = state;
+  await fresh.save();
 
   redirect(
     buildAuthorizeUrl({

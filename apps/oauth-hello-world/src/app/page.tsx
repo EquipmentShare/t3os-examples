@@ -10,15 +10,14 @@ export default async function Home({
 }) {
   const { error } = await searchParams;
 
-  // If we already have a session, skip the landing page — UNLESS we got
-  // here from a failed dashboard render (the loop guard). When ?error is
-  // set, the previous step explicitly bounced us back here. Destroy any
-  // surviving session blob so the user is properly logged out, then
-  // render the error instead of springing back to /dashboard.
+  // If a session exists AND there's no error in the URL, the user is
+  // already signed in — skip the landing page. We deliberately don't
+  // try to call session.destroy() here even if the session is stale:
+  // Server Components can read cookies but can't modify them, so the
+  // destroy goes through /sign-out (a Route Handler) instead. The
+  // /sign-in flow also clears any existing session before starting.
   const session = await getSession();
-  if (error && session.accessToken) {
-    await session.destroy();
-  } else if (session.accessToken) {
+  if (session.accessToken && !error) {
     redirect('/dashboard');
   }
 
