@@ -61,9 +61,10 @@ export default async function Dashboard() {
   // exchange for a new one.
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
-    // getValidAccessToken already called session.destroy() on the way out,
-    // so / won't see the stale accessToken and bounce us back here.
-    redirect('/?error=session_expired_or_revoked');
+    // Bounce to /sign-out which clears the cookie (Route Handler — can
+    // modify cookies) and redirects to /. Server Components can't destroy
+    // the session themselves.
+    redirect('/sign-out');
   }
 
   const accessClaims = decodeJwt(accessToken) as Record<string, unknown>;

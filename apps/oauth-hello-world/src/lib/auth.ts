@@ -31,9 +31,15 @@ export async function getValidAccessToken(): Promise<string | null> {
   }
 
   // Token is expired or about to expire. Without a refresh token there's
-  // nothing we can do but kill the session.
+  // nothing we can do — caller (a Server Component or Route Handler)
+  // should redirect to /sign-out to clear the cookie.
+  //
+  // We deliberately do NOT call session.destroy() here because this helper
+  // can be invoked from Server Components, and Next.js 15 disallows cookie
+  // modification outside Route Handlers / Server Actions. session.destroy()
+  // would throw with "Cookies can only be modified in a Server Action or
+  // Route Handler."
   if (!session.refreshToken) {
-    await session.destroy();
     return null;
   }
 
@@ -46,12 +52,23 @@ export async function getValidAccessToken(): Promise<string | null> {
       session.refreshToken = tokens.refresh_token;
     }
     session.expiresAt = Date.now() + tokens.expires_in * 1000;
-    await session.save();
+    // session.save() also writes to the cookie — same restriction. So this
+    // path only works when getValidAccessToken is called from a Route Handler
+    // or Server Action. From a Server Component, the save throws and we fall
+    // through to the catch — the caller still gets the new (in-memory)
+    // accessToken in that single request, but the rotated cookie isn't
+    // persisted. Acceptable for this hello-world; production code paths
+    // would either refresh via a server action or proxy through an API
+    // route.
+    try {
+      await session.save();
+    } catch {
+      // ignore — read-only context (Server Component)
+    }
     return session.accessToken;
   } catch {
-    // Refresh failed — most often because the grant was revoked. Clear the
-    // session so the next request bounces to /sign-in.
-    await session.destroy();
+    // Refresh failed — most often because the grant was revoked, or the
+    // refresh token itself expired. Caller should redirect to /sign-out.
     return null;
   }
 }
