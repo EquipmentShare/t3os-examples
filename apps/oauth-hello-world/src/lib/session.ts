@@ -16,12 +16,18 @@ export type SessionData = {
   pkceVerifier?: string;
   oauthState?: string;
 
-  // Set during /callback after a successful token exchange
+  // Set during /callback after a successful token exchange.
+  //
+  // We do NOT store the raw id_token — only the few claims the dashboard
+  // displays. iron-session cookies have a ~4KB browser limit; an access
+  // token + refresh token + full id token easily exceeds it (especially
+  // once Iron-encryption overhead is added) and the browser silently
+  // drops the cookie.
   accessToken?: string;
   refreshToken?: string;
-  idToken?: string;
   expiresAt?: number; // unix ms — server clock
   workspaceId?: string; // from the access-token "https://es-erp/workspace_id" claim
+  user?: { name?: string; email?: string; sub: string };
 };
 
 const sessionOptions: SessionOptions = {

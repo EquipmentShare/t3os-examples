@@ -9,6 +9,7 @@
 // On any failure we send the user back to / with an `?error=<reason>` so the
 // landing page can surface a helpful message.
 
+import { decodeJwt } from 'jose';
 import { redirect } from 'next/navigation';
 import type { NextRequest } from 'next/server';
 import { exchangeCodeForTokens, extractWorkspaceId } from '@/lib/oauth';
@@ -58,11 +59,21 @@ export async function GET(req: NextRequest) {
   }
 
   // Replace one-shot values with the authenticated session payload.
+  // We do NOT keep the raw id_token — only the few claims we display.
+  // Keeping the full id_token blows the cookie past Chrome's 4KB limit
+  // once the access token is added.
+  const idClaims = decodeJwt(tokens.id_token) as Record<string, unknown>;
   session.accessToken = tokens.access_token;
-  session.refreshToken = tokens.refresh_token;
-  session.idToken = tokens.id_token;
+  if (tokens.refresh_token) {
+    session.refreshToken = tokens.refresh_token;
+  }
   session.expiresAt = Date.now() + tokens.expires_in * 1000;
   session.workspaceId = workspaceId;
+  session.user = {
+    sub: String(idClaims.sub),
+    name: typeof idClaims.name === 'string' ? idClaims.name : undefined,
+    email: typeof idClaims.email === 'string' ? idClaims.email : undefined,
+  };
   delete session.pkceVerifier;
   delete session.oauthState;
   await session.save();

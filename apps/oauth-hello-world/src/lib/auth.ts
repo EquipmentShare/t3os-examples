@@ -1,6 +1,13 @@
 // Returns a valid access token for the current session, refreshing it if
-// expired. Returns null when the session is dead and the caller should
-// redirect to /sign-in.
+// it's about to expire. Returns null when the session is dead and the
+// caller should redirect to /sign-in.
+//
+// Refresh-token support depends on the T3OS Auth0 application allowing
+// the refresh_token grant + the API allowing offline access. If neither
+// is configured, Auth0 returns no refresh_token at code exchange — we
+// still return the fresh access token and just let the session expire
+// when the token does. The caller redirects to /sign-in on expiry; the
+// user re-completes the consent flow.
 
 import { refreshTokens } from './oauth';
 import { getSession } from './session';
@@ -11,13 +18,23 @@ const REFRESH_BUFFER_MS = 30_000;
 
 export async function getValidAccessToken(): Promise<string | null> {
   const session = await getSession();
-  if (!session.accessToken || !session.refreshToken || !session.expiresAt) {
+  if (!session.accessToken || !session.expiresAt) {
     return null;
   }
 
   const now = Date.now();
-  if (session.expiresAt - now > REFRESH_BUFFER_MS) {
+  const isFresh = session.expiresAt - now > REFRESH_BUFFER_MS;
+
+  // Fresh token — use it as-is, even if we don't have a refresh token.
+  if (isFresh) {
     return session.accessToken;
+  }
+
+  // Token is expired or about to expire. Without a refresh token there's
+  // nothing we can do but kill the session.
+  if (!session.refreshToken) {
+    await session.destroy();
+    return null;
   }
 
   try {

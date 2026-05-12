@@ -8,13 +8,16 @@ export default async function Home({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  // If we already have a session, skip the landing page.
+  const { error } = await searchParams;
+
+  // If we already have a session, skip the landing page — UNLESS we got
+  // here from a failed dashboard render (the loop guard). When ?error is
+  // set, the previous step explicitly bounced us back here; respect that
+  // and show the error instead of springing back to /dashboard.
   const session = await getSession();
-  if (session.accessToken) {
+  if (session.accessToken && !error) {
     redirect('/dashboard');
   }
-
-  const { error } = await searchParams;
 
   return (
     <main>

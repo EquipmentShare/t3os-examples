@@ -13,18 +13,21 @@ interface WorkspaceData {
 
 export default async function Dashboard() {
   const session = await getSession();
-  if (!session.accessToken || !session.idToken || !session.workspaceId) {
+  if (!session.accessToken || !session.user || !session.workspaceId) {
     redirect('/');
   }
 
   // Refresh the token if it's about to expire. Returns null if the grant
-  // was revoked (the smoke test's instant-cutoff property — see README).
+  // was revoked (the smoke test's instant-cutoff property — see README)
+  // OR if the access token has expired and we have no refresh token to
+  // exchange for a new one.
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
+    // getValidAccessToken already called session.destroy() on the way out,
+    // so / won't see the stale accessToken and bounce us back here.
     redirect('/?error=session_expired_or_revoked');
   }
 
-  const idClaims = decodeJwt(session.idToken) as Record<string, unknown>;
   const accessClaims = decodeJwt(accessToken) as Record<string, unknown>;
 
   let workspaceName: string | null = null;
@@ -44,19 +47,19 @@ export default async function Dashboard() {
     <main>
       <h1>Signed in to T3OS</h1>
       <p className="subtitle">
-        The OAuth round-trip succeeded. Below is everything the access token + id token tell us,
-        plus one live GraphQL call proving the bearer token works.
+        The OAuth round-trip succeeded. Below are the id-token claims captured at consent time, the
+        live access-token claims, and one live GraphQL call proving the bearer token works.
       </p>
 
-      <h2>From the id token</h2>
+      <h2>From the id token (at consent time)</h2>
       <div className="card">
         <dl className="kv">
           <dt>name</dt>
-          <dd>{String(idClaims.name ?? '(not set)')}</dd>
+          <dd>{session.user.name ?? '(not set)'}</dd>
           <dt>email</dt>
-          <dd>{String(idClaims.email ?? '(not set)')}</dd>
+          <dd>{session.user.email ?? '(not set)'}</dd>
           <dt>sub</dt>
-          <dd>{String(idClaims.sub)}</dd>
+          <dd>{session.user.sub}</dd>
         </dl>
       </div>
 
