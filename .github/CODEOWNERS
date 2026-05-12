@@ -1,0 +1,11 @@
+# Code ownership for EquipmentShare/t3os-examples.
+#
+# Anyone on @EquipmentShare/es-erp is a code owner for the entire repo.
+# Combined with the "Protect main" branch ruleset, every PR into main is
+# auto-requested for review from the team and needs at least one approval
+# from a team member before it can be merged.
+#
+# Add narrower entries below the global one if specific areas of the repo
+# need different owners (per-app code owners, per-language reviewers, etc.).
+
+* @EquipmentShare/es-erp
