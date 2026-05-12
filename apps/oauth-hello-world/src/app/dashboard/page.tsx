@@ -14,6 +14,11 @@ interface WorkspaceData {
 export default async function Dashboard() {
   const session = await getSession();
   if (!session.accessToken || !session.user || !session.workspaceId) {
+    // Partial session (e.g. left over from an older version of this code
+    // that stored different keys). Destroy it before bouncing so /'s
+    // "if session.accessToken redirect to /dashboard" guard doesn't send
+    // us right back here in a loop.
+    await session.destroy();
     redirect('/');
   }
 

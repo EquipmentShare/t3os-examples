@@ -12,10 +12,13 @@ export default async function Home({
 
   // If we already have a session, skip the landing page — UNLESS we got
   // here from a failed dashboard render (the loop guard). When ?error is
-  // set, the previous step explicitly bounced us back here; respect that
-  // and show the error instead of springing back to /dashboard.
+  // set, the previous step explicitly bounced us back here. Destroy any
+  // surviving session blob so the user is properly logged out, then
+  // render the error instead of springing back to /dashboard.
   const session = await getSession();
-  if (session.accessToken && !error) {
+  if (error && session.accessToken) {
+    await session.destroy();
+  } else if (session.accessToken) {
     redirect('/dashboard');
   }
 
