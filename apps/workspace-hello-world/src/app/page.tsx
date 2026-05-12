@@ -68,7 +68,12 @@ export default async function Home({
         </ol>
       </div>
 
-      <form action={installFormAction} method="get" className="card" style={{ marginTop: '1.5rem' }}>
+      <form
+        action={installFormAction}
+        method="get"
+        className="card"
+        style={{ marginTop: '1.5rem' }}
+      >
         <h2 style={{ marginTop: 0 }}>Install in your workspace</h2>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Paste the id of any T3OS workspace you have admin access to. You can find it in any T3OS

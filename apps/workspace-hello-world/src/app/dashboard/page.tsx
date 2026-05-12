@@ -127,13 +127,11 @@ export default async function Dashboard() {
                 <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
                   {contacts.map((c) => (
                     <li key={c.id} style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>
-                      <code style={{ color: 'var(--muted)' }}>[{c.__typename}]</code>{' '}
-                      {c.name}
+                      <code style={{ color: 'var(--muted)' }}>[{c.__typename}]</code> {c.name}
                       {c.__typename === 'PersonContact' && c.email ? (
                         <>
                           {' '}
-                          —{' '}
-                          <span style={{ color: 'var(--muted)' }}>{c.email}</span>
+                          — <span style={{ color: 'var(--muted)' }}>{c.email}</span>
                         </>
                       ) : null}
                     </li>
