@@ -120,6 +120,48 @@ export default async function Dashboard() {
         </dl>
       </div>
 
+      <h2>Raw access token (for inspecting claims)</h2>
+      <div className="card">
+        <p style={{ marginTop: 0, color: 'var(--muted)', fontSize: '0.875rem' }}>
+          This is the access token T3OS issued. The browser only sees it because we render it
+          server-side and embed it in HTML — outside this debug surface, the token is server-only,
+          sealed inside the encrypted iron-session cookie. Paste into{' '}
+          <a href="https://jwt.io" target="_blank" rel="noreferrer">
+            jwt.io
+          </a>{' '}
+          to inspect the claims, or scroll up to see them already decoded.
+        </p>
+        <details>
+          <summary
+            style={{
+              cursor: 'pointer',
+              color: 'var(--accent)',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
+          >
+            Show / copy access token
+          </summary>
+          <pre
+            style={{
+              marginTop: '0.75rem',
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '0.75rem',
+              fontSize: '0.7rem',
+              lineHeight: 1.4,
+              overflowX: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              color: 'var(--text)',
+            }}
+          >
+            {accessToken}
+          </pre>
+        </details>
+      </div>
+
       <h2>One live GraphQL call: getWorkspaceById + listContacts</h2>
       <div className="card">
         {queryError ? (
