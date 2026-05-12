@@ -6,8 +6,42 @@ import { loadInstall } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
-interface WorkspaceData {
+// Single GraphQL round-trip pulling both the workspace summary and the first
+// few contacts. Both selections share the same X-API-Key auth check —
+// bundling them keeps the dashboard responsive and exercises a richer slice
+// of the API.
+//
+// `listContacts` returns the union `Contact = BusinessContact | PersonContact`;
+// we inline-fragment both members so we always get a usable name to render.
+const DASHBOARD_QUERY = `
+  query Dashboard($workspaceId: String!, $page: ListContactsPage) {
+    getWorkspaceById(id: $workspaceId) {
+      id
+      name
+    }
+    listContacts(filter: { workspaceId: $workspaceId }, page: $page) {
+      items {
+        __typename
+        ... on BusinessContact { id name }
+        ... on PersonContact { id name email }
+      }
+      page {
+        totalItems
+      }
+    }
+  }
+`;
+
+type ContactItem =
+  | { __typename: 'BusinessContact'; id: string; name: string }
+  | { __typename: 'PersonContact'; id: string; name: string; email: string };
+
+interface DashboardData {
   getWorkspaceById: { id: string; name: string };
+  listContacts: {
+    items: ContactItem[];
+    page: { totalItems: number };
+  } | null;
 }
 
 export default async function Dashboard() {
@@ -22,14 +56,19 @@ export default async function Dashboard() {
   }
 
   let workspaceName: string | null = null;
+  let contacts: ContactItem[] = [];
+  let totalContacts = 0;
   let queryError: string | null = null;
   try {
-    const data = await gqlWithApiKey<WorkspaceData>(
-      stored.apiKey,
-      'query Q($id: String!) { getWorkspaceById(id: $id) { id name } }',
-      { id: session.workspaceId },
-    );
+    const data = await gqlWithApiKey<DashboardData>(stored.apiKey, DASHBOARD_QUERY, {
+      workspaceId: session.workspaceId,
+      page: { number: 1, size: 5 },
+    });
     workspaceName = data.getWorkspaceById.name;
+    if (data.listContacts) {
+      contacts = data.listContacts.items;
+      totalContacts = data.listContacts.page.totalItems;
+    }
   } catch (e) {
     queryError = e instanceof Error ? e.message : String(e);
   }
@@ -60,17 +99,49 @@ export default async function Dashboard() {
         </dl>
       </div>
 
-      <h2>One live GraphQL call: getWorkspaceById</h2>
+      <h2>One live GraphQL call: getWorkspaceById + listContacts</h2>
       <div className="card">
         {queryError ? (
           <div className="error" style={{ margin: 0 }}>
             {queryError}
           </div>
         ) : (
-          <dl className="kv">
-            <dt>workspace name</dt>
-            <dd>{workspaceName}</dd>
-          </dl>
+          <>
+            <dl className="kv">
+              <dt>workspace name</dt>
+              <dd>{workspaceName}</dd>
+              <dt>total contacts</dt>
+              <dd>{totalContacts}</dd>
+            </dl>
+            {contacts.length > 0 && (
+              <>
+                <p
+                  style={{
+                    marginTop: '1rem',
+                    color: 'var(--muted)',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  First {contacts.length} of {totalContacts}:
+                </p>
+                <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem' }}>
+                  {contacts.map((c) => (
+                    <li key={c.id} style={{ fontSize: '0.9rem', lineHeight: 1.6 }}>
+                      <code style={{ color: 'var(--muted)' }}>[{c.__typename}]</code>{' '}
+                      {c.name}
+                      {c.__typename === 'PersonContact' && c.email ? (
+                        <>
+                          {' '}
+                          —{' '}
+                          <span style={{ color: 'var(--muted)' }}>{c.email}</span>
+                        </>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
         )}
       </div>
 
