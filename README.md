@@ -1,6 +1,6 @@
 # T3OS Examples
 
-Reference apps demonstrating the two T3OS developer auth flows. Each app is a self-contained Next.js project you can read top-to-bottom or clone and adapt.
+Reference apps demonstrating the three T3OS developer auth flows. Each app is a self-contained Next.js project you can read top-to-bottom or clone and adapt.
 
 **Start here:**
 
@@ -8,19 +8,21 @@ Reference apps demonstrating the two T3OS developer auth flows. Each app is a se
 | ------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | **OAuth Hello World**     | User-delegated (OAuth 2.0 Authorization Code + PKCE)     | [t3os-oauth-hello-world.vercel.app](https://t3os-oauth-hello-world.vercel.app)         | [`apps/oauth-hello-world`](./apps/oauth-hello-world)         |
 | **Workspace Hello World** | Workspace-installed (one-shot install JWT → `X-API-Key`) | [t3os-workspace-hello-world.vercel.app](https://t3os-workspace-hello-world.vercel.app) | [`apps/workspace-hello-world`](./apps/workspace-hello-world) |
+| **OIDC Hello World**      | Sign-in-only OpenID Connect (no workspace, no API)       | [t3os-oidc-hello-world.vercel.app](https://t3os-oidc-hello-world.vercel.app)           | [`apps/oidc-hello-world`](./apps/oidc-hello-world)           |
 
-Both apps point at **production T3OS** (`api.equipmentshare.com/es-erp-api/graphql`) and are registered as PUBLIC + LIVE in the T3OS marketplace.
+All three apps run against **production T3OS Auth0** and are registered as PUBLIC + LIVE in the T3OS marketplace. The OAuth and Workspace apps additionally talk to the prod ERP GraphQL endpoint (`api.equipmentshare.com/es-erp-api/graphql`); the OIDC app does not — sign-in only.
 
 ## Which one do I want?
 
-- **OAuth Hello World** — your app needs to act _on behalf of a specific user_. The user signs in via T3OS, you get a bearer token scoped to them, queries return data they personally have access to. Use when building integrations a user signs into (personal-productivity tools, "Connect to T3OS" buttons on other SaaS, etc.).
+- **OAuth Hello World** — your app needs to act _on behalf of a specific user_. The user signs in via T3OS, picks a workspace at the consent screen, you get a bearer token scoped to them, queries return data they personally have access to. Use when building integrations a user signs into (personal-productivity tools, "Connect to T3OS" buttons on other SaaS, etc.).
 - **Workspace Hello World** — your app needs to act _on behalf of a workspace_, without a user in the loop. A workspace admin installs you once; you get a workspace-scoped API key; you keep working until uninstalled. Use when building syncs, exports, scheduled jobs, webhooks — anything unattended.
+- **OIDC Hello World** — your app only needs to know _who_ the user is, not what they can do in T3OS. T3OS acts as your pure OpenID Connect identity provider — no workspace pick at consent time, no API access. Use for "Sign in with T3OS" buttons in third-party apps that have their own data model and just want a verified identity.
 
 ## What's in each app
 
-Each Hello World does the same thing: complete the auth round-trip, read the workspace's name via one GraphQL call, display every claim from the credential, and provide a "manage / revoke" link back to the T3OS web app where the user can clean up.
+Each Hello World walks one auth flow end-to-end and renders the credentials/claims it produces. The OAuth and Workspace apps additionally make one GraphQL call (`getWorkspaceById`) to prove the credential works against the live ERP API; the OIDC app deliberately doesn't — its whole point is that you can't.
 
-Both apps are deliberately written without an OAuth SDK — the wire-level HTTP requests, PKCE challenge generation, JWT verification, and token storage are visible in the source so you can transliterate the pattern to any stack.
+All three apps are written **without an OAuth SDK**. PKCE challenge generation, the `/authorize` URL builder, the `/oauth/token` POST, JWKS-backed JWT verification, and token storage are visible in the source so you can transliterate the pattern to any stack.
 
 ## Repository shape
 
@@ -28,9 +30,10 @@ Both apps are deliberately written without an OAuth SDK — the wire-level HTTP 
 t3os-examples/
 ├── apps/
 │   ├── oauth-hello-world/          # Next.js app — user-delegated flow
-│   └── workspace-hello-world/      # Next.js app — workspace-installed flow
+│   ├── workspace-hello-world/      # Next.js app — workspace-installed flow
+│   └── oidc-hello-world/           # Next.js app — sign-in-only OIDC flow
 ├── scripts/
-│   └── bootstrap-register-apps.ts  # One-shot script: registers both apps in prod
+│   └── bootstrap-register-apps.ts  # One-shot script: registers all three apps in prod
 ├── .github/workflows/ci.yml        # Lint + typecheck + build, all apps
 ├── turbo.json                      # Build pipeline
 └── pnpm-workspace.yaml             # Workspace definition
@@ -45,8 +48,9 @@ t3os-examples/
 pnpm install
 
 # Run one app at a time (each needs its own .env.local — see apps/*/README.md)
-pnpm --filter oauth-hello-world dev
-pnpm --filter workspace-hello-world dev
+pnpm --filter oauth-hello-world dev       # port 3000
+pnpm --filter workspace-hello-world dev   # port 3001
+pnpm --filter oidc-hello-world dev        # port 3002
 
 # Or run lint/typecheck/build across all apps
 pnpm lint
@@ -62,8 +66,9 @@ These are deliberately minimal "hello-world" reference apps. A real production i
 
 - **For OAuth apps:** a refresh-token rotation strategy (this example refreshes on every request; production should refresh on-demand and handle the refresh-token revocation edge case), proper sign-out via `/v2/logout` to clear the Auth0 SSO cookie, and probably a database for multi-device sessions instead of cookie-only storage.
 - **For workspace-installed apps:** redundant JWKS caching (this example uses `jose`'s default in-memory cache; production may want a persistent cache to survive cold starts), retry/backoff on transient T3OS errors, and a dead-letter for permanent failures.
-- **Scope discipline:** these demos request the broadest read-only scope (`all_resources_reader`) for clarity. Real integrations should request the narrowest scope that satisfies their queries (e.g., `contact_reader` if you only need contacts) — the T3OS consent UI shows users every scope you're asking for.
-- **Credential rotation:** `clientSecret` (OAuth) and the install-time API key (workspace) can be rotated via the T3OS dev portal. Production apps should plan for this.
+- **For OIDC apps:** persistent JWKS caching (cold starts re-fetch the JWKS otherwise), keying your own user table off the `https://es-erp/uid` claim rather than `sub` so user identity survives an Auth0 connection migration, and account-linking logic if the same human can sign in via multiple identity sources.
+- **Scope discipline:** the OAuth demo requests the broadest read-only scope (`all_resources_reader`) for clarity. Real integrations should request the narrowest scope that satisfies their queries (e.g., `contact_reader` if you only need contacts) — the T3OS consent UI shows users every scope you're asking for. The OIDC app requests none.
+- **Credential rotation:** `clientSecret` (OAuth and OIDC) and the install-time API key (workspace) can be rotated via the T3OS dev portal. Production apps should plan for this.
 
 ## License
 

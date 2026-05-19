@@ -1,10 +1,10 @@
 #!/usr/bin/env -S npx tsx
 /**
- * Bootstrap script: registers both hello-world apps against T3OS prod (or
- * staging) and prints the credentials you need to wire into each Vercel
+ * Bootstrap script: registers all three hello-world apps against T3OS prod
+ * (or staging) and prints the credentials you need to wire into each Vercel
  * project's env vars.
  *
- * The script is a stripped-down sibling of the two smoke-test scripts in the
+ * The script is a stripped-down sibling of the smoke-test scripts in the
  * T3OS API repo. It performs the registerApp flow only — no install/grant
  * round-trip, no end-to-end assertions, no cleanup. The intent is "register
  * the apps once, capture the secrets, never run again."
@@ -22,8 +22,9 @@
  *
  * Optional flags:
  *
- *   --skip-oauth                     — only register the workspace app
- *   --skip-workspace                 — only register the OAuth app
+ *   --skip-oauth                     — don't register the OAuth app
+ *   --skip-workspace                 — don't register the workspace app
+ *   --skip-oidc                      — don't register the OIDC app
  *   --submit-for-review              — also call submitAppForReview after
  *                                      registering, transitioning each app
  *                                      from PRIVATE+LIVE → PENDING_REVIEW
@@ -62,9 +63,13 @@ interface Config {
   workspaceCallbackUrl: string;
   workspaceAppName: string;
   workspaceAppSlugPrefix: string;
+  oidcRedirectUri: string;
+  oidcAppName: string;
+  oidcAppSlugPrefix: string;
   submitForReview: boolean;
   skipOauth: boolean;
   skipWorkspace: boolean;
+  skipOidc: boolean;
 }
 
 const ENV_DEFAULTS: Record<Env, { graphqlUrl: string }> = {
@@ -87,6 +92,7 @@ function loadConfig(): Config {
   const prefix = env === 'prod' ? 'https://' : 'https://';
   const oauthHost = process.env.OAUTH_HOST ?? 't3os-oauth-hello-world.vercel.app';
   const wsHost = process.env.WORKSPACE_HOST ?? 't3os-workspace-hello-world.vercel.app';
+  const oidcHost = process.env.OIDC_HOST ?? 't3os-oidc-hello-world.vercel.app';
 
   return {
     env,
@@ -99,9 +105,13 @@ function loadConfig(): Config {
     workspaceCallbackUrl: `${prefix}${wsHost}/install-complete`,
     workspaceAppName: 'T3OS Workspace Hello World',
     workspaceAppSlugPrefix: 't3os-workspace-hello-world',
+    oidcRedirectUri: `${prefix}${oidcHost}/oauth/callback`,
+    oidcAppName: 'T3OS OIDC Hello World',
+    oidcAppSlugPrefix: 't3os-oidc-hello-world',
     submitForReview: process.argv.includes('--submit-for-review'),
     skipOauth: process.argv.includes('--skip-oauth'),
     skipWorkspace: process.argv.includes('--skip-workspace'),
+    skipOidc: process.argv.includes('--skip-oidc'),
   };
 }
 
@@ -222,6 +232,15 @@ const MARKETPLACE_FIELDS_WORKSPACE = {
   supportUrl: 'https://github.com/EquipmentShare/t3os-examples/issues',
 };
 
+const MARKETPLACE_FIELDS_OIDC = {
+  description:
+    'Hello-world reference app demonstrating T3OS as a sign-in-only OpenID Connect identity provider. No workspace access.',
+  iconUrl: 'https://t3os-oidc-hello-world.vercel.app/icon',
+  privacyPolicyUrl: 'https://t3os-oidc-hello-world.vercel.app/privacy',
+  termsOfServiceUrl: 'https://t3os-oidc-hello-world.vercel.app/terms',
+  supportUrl: 'https://github.com/EquipmentShare/t3os-examples/issues',
+};
+
 interface RegistrationResult {
   appId: string;
   auth0ClientId: string;
@@ -253,6 +272,46 @@ async function registerOauthApp(cfg: Config): Promise<RegistrationResult> {
         redirectUris: [cfg.oauthRedirectUri],
         requestedScopes: ['all_resources_reader'],
         ...MARKETPLACE_FIELDS_OAUTH,
+      },
+    },
+  );
+  return {
+    appId: data.registerApp.app.id,
+    auth0ClientId: data.registerApp.app.auth0ClientId,
+    clientSecret: data.registerApp.clientSecret,
+    slug,
+  };
+}
+
+async function registerOidcApp(cfg: Config): Promise<RegistrationResult> {
+  // Sign-in-only USER_DELEGATED app. Same `kind` as the OAuth example but
+  // with NO `requestedScopes` — the resulting Auth0 client can't be used
+  // against the ERP API (its access_token has identity claims suppressed
+  // by the T3OS post-login Action). The point is to act as a pure OIDC
+  // identity provider for third-party "Sign in with T3OS" buttons.
+  const slug = `${cfg.oidcAppSlugPrefix}-${Date.now()}`;
+  const data = await gql<{
+    registerApp: {
+      app: { id: string; auth0ClientId: string; kind: string; publishStatus: string };
+      clientSecret: string;
+    };
+  }>(
+    cfg,
+    `mutation R($input: RegisterAppInput!) {
+       registerApp(input: $input) {
+         app { id auth0ClientId kind publishStatus }
+         clientSecret
+       }
+     }`,
+    {
+      input: {
+        kind: 'USER_DELEGATED',
+        ownerWorkspaceId: cfg.workspaceId,
+        name: cfg.oidcAppName,
+        slug,
+        redirectUris: [cfg.oidcRedirectUri],
+        requestedScopes: [],
+        ...MARKETPLACE_FIELDS_OIDC,
       },
     },
   );
@@ -319,6 +378,7 @@ async function main(): Promise<void> {
   info(`workspace:  ${cfg.workspaceId}`);
   info(`oauth url:  ${cfg.oauthRedirectUri}`);
   info(`install:    ${cfg.workspaceCallbackUrl}`);
+  info(`oidc url:   ${cfg.oidcRedirectUri}`);
   info(`submit:     ${cfg.submitForReview ? 'yes (PENDING_REVIEW after register)' : 'no'}`);
 
   banner('Pre-flight');
@@ -326,6 +386,7 @@ async function main(): Promise<void> {
 
   let oauth: RegistrationResult | null = null;
   let workspace: RegistrationResult | null = null;
+  let oidc: RegistrationResult | null = null;
 
   if (!cfg.skipOauth) {
     banner('Register OAuth Hello World');
@@ -343,6 +404,16 @@ async function main(): Promise<void> {
     ok('registered WORKSPACE_INSTALLED', `appId=${workspace.appId}`);
     if (cfg.submitForReview) {
       await submitForReview(cfg, workspace.appId);
+      ok('submitted for marketplace review');
+    }
+  }
+
+  if (!cfg.skipOidc) {
+    banner('Register OIDC Hello World');
+    oidc = await registerOidcApp(cfg);
+    ok('registered USER_DELEGATED (sign-in-only)', `appId=${oidc.appId}`);
+    if (cfg.submitForReview) {
+      await submitForReview(cfg, oidc.appId);
       ok('submitted for marketplace review');
     }
   }
@@ -369,6 +440,15 @@ T3OS_APP_ID=${workspace.appId}
 # or migrate this app to a hybrid flow.
 AUTH0_CLIENT_ID=${workspace.auth0ClientId}
 AUTH0_CLIENT_SECRET=${workspace.clientSecret}
+
+`);
+  }
+
+  if (oidc) {
+    process.stdout.write(`# t3os-oidc-hello-world (Vercel project)
+T3OS_APP_ID=${oidc.appId}
+AUTH0_CLIENT_ID=${oidc.auth0ClientId}
+AUTH0_CLIENT_SECRET=${oidc.clientSecret}
 
 `);
   }
