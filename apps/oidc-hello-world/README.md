@@ -2,7 +2,7 @@
 
 Sign-in-only OpenID Connect flow against T3OS, hand-rolled with no auth SDK. Companion to the dev portal's [`/docs/oidc`](https://app.t3os.ai/docs/oidc) page.
 
-**Live demo:** [t3os-oidc-hello-world.vercel.app](https://t3os-oidc-hello-world.vercel.app)
+**Live demo:** _coming soon._ The Vercel project (`t3os-oidc-hello-world.vercel.app`) hasn't been provisioned yet; until it is, the only way to exercise this app is locally (see "Running locally" below). The bootstrap script reads `OIDC_HOST` if you want to register the app against a non-canonical deployment in the meantime.
 
 ## When you want this app's pattern
 

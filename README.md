@@ -8,7 +8,7 @@ Reference apps demonstrating the three T3OS developer auth flows. Each app is a 
 | ------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | **OAuth Hello World**     | User-delegated (OAuth 2.0 Authorization Code + PKCE)     | [t3os-oauth-hello-world.vercel.app](https://t3os-oauth-hello-world.vercel.app)         | [`apps/oauth-hello-world`](./apps/oauth-hello-world)         |
 | **Workspace Hello World** | Workspace-installed (one-shot install JWT → `X-API-Key`) | [t3os-workspace-hello-world.vercel.app](https://t3os-workspace-hello-world.vercel.app) | [`apps/workspace-hello-world`](./apps/workspace-hello-world) |
-| **OIDC Hello World**      | Sign-in-only OpenID Connect (no workspace, no API)       | [t3os-oidc-hello-world.vercel.app](https://t3os-oidc-hello-world.vercel.app)           | [`apps/oidc-hello-world`](./apps/oidc-hello-world)           |
+| **OIDC Hello World**      | Sign-in-only OpenID Connect (no workspace, no API)       | _coming soon — Vercel project not yet provisioned_                                     | [`apps/oidc-hello-world`](./apps/oidc-hello-world)           |
 
 All three apps run against **production T3OS Auth0** and are registered as PUBLIC + LIVE in the T3OS marketplace. The OAuth and Workspace apps additionally talk to the prod ERP GraphQL endpoint (`api.equipmentshare.com/es-erp-api/graphql`); the OIDC app does not — sign-in only.
 

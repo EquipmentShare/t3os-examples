@@ -57,13 +57,17 @@ interface Config {
   graphqlUrl: string;
   userToken: string;
   workspaceId: string;
-  oauthRedirectUri: string;
+  // App host roots (e.g. "https://t3os-oauth-hello-world.vercel.app"). All
+  // marketplace URLs and redirect/callback URIs are derived from these,
+  // so overriding *_HOST is enough to retarget a staging/preview deploy
+  // without editing this file.
+  oauthHostUrl: string;
   oauthAppName: string;
   oauthAppSlugPrefix: string;
-  workspaceCallbackUrl: string;
+  workspaceHostUrl: string;
   workspaceAppName: string;
   workspaceAppSlugPrefix: string;
-  oidcRedirectUri: string;
+  oidcHostUrl: string;
   oidcAppName: string;
   oidcAppSlugPrefix: string;
   submitForReview: boolean;
@@ -88,24 +92,26 @@ function loadConfig(): Config {
   if (!workspaceId) fatal('ERP_WORKSPACE_ID env var is required');
 
   // For prod we register against the canonical Vercel URLs. Override via
-  // env if you're registering against your own preview/fork deployments.
-  const prefix = env === 'prod' ? 'https://' : 'https://';
-  const oauthHost = process.env.OAUTH_HOST ?? 't3os-oauth-hello-world.vercel.app';
-  const wsHost = process.env.WORKSPACE_HOST ?? 't3os-workspace-hello-world.vercel.app';
-  const oidcHost = process.env.OIDC_HOST ?? 't3os-oidc-hello-world.vercel.app';
+  // *_HOST env vars when targeting a staging or preview deploy — the host
+  // flows into the redirect URI AND every marketplace URL (icon, privacy,
+  // terms, support), so a single override is enough to retarget the
+  // registration end-to-end.
+  const oauthHostUrl = `https://${process.env.OAUTH_HOST ?? 't3os-oauth-hello-world.vercel.app'}`;
+  const workspaceHostUrl = `https://${process.env.WORKSPACE_HOST ?? 't3os-workspace-hello-world.vercel.app'}`;
+  const oidcHostUrl = `https://${process.env.OIDC_HOST ?? 't3os-oidc-hello-world.vercel.app'}`;
 
   return {
     env,
     graphqlUrl: process.env.ERP_GRAPHQL_URL ?? ENV_DEFAULTS[env].graphqlUrl,
     userToken,
     workspaceId,
-    oauthRedirectUri: `${prefix}${oauthHost}/callback`,
+    oauthHostUrl,
     oauthAppName: 'T3OS OAuth Hello World',
     oauthAppSlugPrefix: 't3os-oauth-hello-world',
-    workspaceCallbackUrl: `${prefix}${wsHost}/install-complete`,
+    workspaceHostUrl,
     workspaceAppName: 'T3OS Workspace Hello World',
     workspaceAppSlugPrefix: 't3os-workspace-hello-world',
-    oidcRedirectUri: `${prefix}${oidcHost}/oauth/callback`,
+    oidcHostUrl,
     oidcAppName: 'T3OS OIDC Hello World',
     oidcAppSlugPrefix: 't3os-oidc-hello-world',
     submitForReview: process.argv.includes('--submit-for-review'),
@@ -214,32 +220,44 @@ async function ensureDeveloperApproved(cfg: Config): Promise<void> {
   ok(`developer record APPROVED`, `developerId=${dev.id}`);
 }
 
-const MARKETPLACE_FIELDS_OAUTH = {
-  description:
-    "Hello-world reference app demonstrating T3OS's user-delegated OAuth flow. Read-only.",
-  iconUrl: 'https://t3os-oauth-hello-world.vercel.app/icon',
-  privacyPolicyUrl: 'https://t3os-oauth-hello-world.vercel.app/privacy',
-  termsOfServiceUrl: 'https://t3os-oauth-hello-world.vercel.app/terms',
-  supportUrl: 'https://github.com/EquipmentShare/t3os-examples/issues',
-};
+// Marketplace fields are derived from each app's host root so a single
+// `*_HOST` env override retargets icon / privacy / terms URLs along with
+// the redirect URI. Descriptions and the shared GitHub issues URL stay
+// constant across environments.
+const SUPPORT_URL = 'https://github.com/EquipmentShare/t3os-examples/issues';
 
-const MARKETPLACE_FIELDS_WORKSPACE = {
-  description:
-    "Hello-world reference app demonstrating T3OS's workspace-installed auth flow. Read-only.",
-  iconUrl: 'https://t3os-workspace-hello-world.vercel.app/icon',
-  privacyPolicyUrl: 'https://t3os-workspace-hello-world.vercel.app/privacy',
-  termsOfServiceUrl: 'https://t3os-workspace-hello-world.vercel.app/terms',
-  supportUrl: 'https://github.com/EquipmentShare/t3os-examples/issues',
-};
+function marketplaceFieldsOauth(hostUrl: string) {
+  return {
+    description:
+      "Hello-world reference app demonstrating T3OS's user-delegated OAuth flow. Read-only.",
+    iconUrl: `${hostUrl}/icon`,
+    privacyPolicyUrl: `${hostUrl}/privacy`,
+    termsOfServiceUrl: `${hostUrl}/terms`,
+    supportUrl: SUPPORT_URL,
+  };
+}
 
-const MARKETPLACE_FIELDS_OIDC = {
-  description:
-    'Hello-world reference app demonstrating T3OS as a sign-in-only OpenID Connect identity provider. No workspace access.',
-  iconUrl: 'https://t3os-oidc-hello-world.vercel.app/icon',
-  privacyPolicyUrl: 'https://t3os-oidc-hello-world.vercel.app/privacy',
-  termsOfServiceUrl: 'https://t3os-oidc-hello-world.vercel.app/terms',
-  supportUrl: 'https://github.com/EquipmentShare/t3os-examples/issues',
-};
+function marketplaceFieldsWorkspace(hostUrl: string) {
+  return {
+    description:
+      "Hello-world reference app demonstrating T3OS's workspace-installed auth flow. Read-only.",
+    iconUrl: `${hostUrl}/icon`,
+    privacyPolicyUrl: `${hostUrl}/privacy`,
+    termsOfServiceUrl: `${hostUrl}/terms`,
+    supportUrl: SUPPORT_URL,
+  };
+}
+
+function marketplaceFieldsOidc(hostUrl: string) {
+  return {
+    description:
+      'Hello-world reference app demonstrating T3OS as a sign-in-only OpenID Connect identity provider. No workspace access.',
+    iconUrl: `${hostUrl}/icon`,
+    privacyPolicyUrl: `${hostUrl}/privacy`,
+    termsOfServiceUrl: `${hostUrl}/terms`,
+    supportUrl: SUPPORT_URL,
+  };
+}
 
 interface RegistrationResult {
   appId: string;
@@ -269,9 +287,9 @@ async function registerOauthApp(cfg: Config): Promise<RegistrationResult> {
         ownerWorkspaceId: cfg.workspaceId,
         name: cfg.oauthAppName,
         slug,
-        redirectUris: [cfg.oauthRedirectUri],
+        redirectUris: [`${cfg.oauthHostUrl}/callback`],
         requestedScopes: ['all_resources_reader'],
-        ...MARKETPLACE_FIELDS_OAUTH,
+        ...marketplaceFieldsOauth(cfg.oauthHostUrl),
       },
     },
   );
@@ -309,9 +327,9 @@ async function registerOidcApp(cfg: Config): Promise<RegistrationResult> {
         ownerWorkspaceId: cfg.workspaceId,
         name: cfg.oidcAppName,
         slug,
-        redirectUris: [cfg.oidcRedirectUri],
+        redirectUris: [`${cfg.oidcHostUrl}/oauth/callback`],
         requestedScopes: [],
-        ...MARKETPLACE_FIELDS_OIDC,
+        ...marketplaceFieldsOidc(cfg.oidcHostUrl),
       },
     },
   );
@@ -344,10 +362,10 @@ async function registerWorkspaceApp(cfg: Config): Promise<RegistrationResult> {
         ownerWorkspaceId: cfg.workspaceId,
         name: cfg.workspaceAppName,
         slug,
-        installCallbackUrl: cfg.workspaceCallbackUrl,
+        installCallbackUrl: `${cfg.workspaceHostUrl}/install-complete`,
         redirectUris: [],
         requestedScopes: ['all_resources_reader'],
-        ...MARKETPLACE_FIELDS_WORKSPACE,
+        ...marketplaceFieldsWorkspace(cfg.workspaceHostUrl),
       },
     },
   );
@@ -376,9 +394,9 @@ async function main(): Promise<void> {
   banner(`T3OS hello-world app bootstrap (${cfg.env})`);
   info(`graphql:    ${cfg.graphqlUrl}`);
   info(`workspace:  ${cfg.workspaceId}`);
-  info(`oauth url:  ${cfg.oauthRedirectUri}`);
-  info(`install:    ${cfg.workspaceCallbackUrl}`);
-  info(`oidc url:   ${cfg.oidcRedirectUri}`);
+  info(`oauth url:  ${cfg.oauthHostUrl}/callback`);
+  info(`install:    ${cfg.workspaceHostUrl}/install-complete`);
+  info(`oidc url:   ${cfg.oidcHostUrl}/oauth/callback`);
   info(`submit:     ${cfg.submitForReview ? 'yes (PENDING_REVIEW after register)' : 'no'}`);
 
   banner('Pre-flight');
