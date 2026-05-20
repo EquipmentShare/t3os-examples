@@ -46,7 +46,7 @@ Building the `/authorize` URL **without** an `audience` query param produces `er
 
 ### 2. `azp` pinning on verify
 
-A standards-compliant OIDC verifier pins `iss` and `aud === client_id`. That isn't enough on a tenant where multiple Auth0 apps share an API audience — a sibling app's id_token would pass an `aud` check. This app additionally pins `azp === client_id`. See `src/lib/verify.ts:verifyIdToken`.
+A standards-compliant OIDC verifier pins `iss` and `aud === client_id`. That isn't enough on a tenant where multiple Auth0 apps share an API audience — a sibling app's id_token would pass an `aud` check. This app additionally pins `azp === client_id` when `azp` is present. Per OIDC Core §5, `azp` is only required when `aud` is multi-valued, so the check has to be conditional: if `azp` is present it MUST match `client_id`, and if `aud` is multi-valued `azp` MUST be present. T3OS's id_tokens for sign-in-only apps currently arrive with a single-valued `aud` and no `azp`, so the unconditional pin would reject every valid token — easy to copy into a sibling-tenant context where it'd suddenly start firing. See `src/lib/verify.ts:verifyIdToken`.
 
 ### 3. Identity from the id_token, not the access_token
 

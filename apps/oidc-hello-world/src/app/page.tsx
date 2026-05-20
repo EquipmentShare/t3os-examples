@@ -71,11 +71,13 @@ export default async function Home({
         </p>
         <p>
           <strong>
-            2. Pin <code>azp</code> on verify.
+            2. Pin <code>azp</code> on verify (conditionally).
           </strong>{' '}
           Auth0 tenants can have multiple apps sharing one API audience. Checking{' '}
           <code>aud === client_id</code> alone lets you accept id_tokens minted for sibling apps.
-          The verifier here also checks <code>azp === client_id</code>.
+          The verifier here also checks <code>azp === client_id</code> — but only when{' '}
+          <code>azp</code> is present (per OIDC Core §5 it&apos;s only required when{' '}
+          <code>aud</code> is multi-valued).
         </p>
         <p>
           <strong>3. id_token, not access_token, for identity.</strong> Auth0 still issues an

@@ -1,17 +1,28 @@
 // id_token verification — the part the dev-portal page calls out as the
 // most-commonly-skipped step in OIDC integrations.
 //
-// We pin THREE claims (not just two):
+// We pin:
 //
 //   - iss === https://<auth0Domain>/
 //   - aud === client_id
-//   - azp === client_id      ← GOTCHA 2
+//   - azp === client_id  (CONDITIONAL — see below)
+//   - nonce matches the value we minted at /sign-in
 //
-// Why `azp` matters: in an Auth0 tenant where multiple applications share an
-// API audience, the same /authorize → /oauth/token flow could mint a token
-// whose `aud` is the shared audience and whose `azp` (Authorized Party) is
-// some OTHER application. Checking `aud` alone lets you accept id_tokens
-// minted for siblings; checking `azp` pins the token to *this* client.
+// Why `azp` matters: in an Auth0 tenant where multiple applications share
+// an API audience, the same /authorize → /oauth/token flow could mint a
+// token whose `aud` is the shared audience and whose `azp` (Authorized
+// Party) is some OTHER application. Checking `aud` alone lets you accept
+// id_tokens minted for siblings; checking `azp` pins the token to *this*
+// client.
+//
+// Per OIDC Core §5, `azp` is only REQUIRED when `aud` is multi-valued.
+// For single-audience id_tokens (the common case for sign-in-only apps),
+// `azp` may legitimately be absent. So the check is:
+//
+//   - If azp is present → it MUST equal client_id.
+//   - If aud is multi-valued → azp MUST be present.
+//   - If aud is single-valued and azp is absent → OK (aud === client_id
+//     check above is your only defense, but it suffices).
 //
 // The id_token also carries an `https://es-erp/uid` claim populated by the
 // T3OS Auth0 post-login Action — that's the canonical T3OS user id. We
@@ -95,13 +106,14 @@ export async function verifyIdToken(idToken: string, expectedNonce: string): Pro
 
   const { payload } = result;
 
-  if (payload.azp !== clientId) {
-    // See top-of-file comment — sharing an API audience between Auth0 apps
-    // means a sibling app's id_token would pass an `aud` check. `azp`
-    // closes that hole.
-    throw new Error(
-      `id_token azp mismatch: got ${payload.azp ?? '(missing)'}, expected ${clientId}`,
-    );
+  // azp pinning, per OIDC Core §5 (see top-of-file comment for the
+  // conditional logic).
+  const aud = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (aud.length > 1 && !payload.azp) {
+    throw new Error('id_token has multiple audiences but no azp — refusing to verify');
+  }
+  if (payload.azp !== undefined && payload.azp !== clientId) {
+    throw new Error(`id_token azp mismatch: got ${payload.azp}, expected ${clientId}`);
   }
 
   if (payload.nonce !== expectedNonce) {
