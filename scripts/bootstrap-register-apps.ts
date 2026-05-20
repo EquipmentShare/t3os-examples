@@ -302,11 +302,20 @@ async function registerOauthApp(cfg: Config): Promise<RegistrationResult> {
 }
 
 async function registerOidcApp(cfg: Config): Promise<RegistrationResult> {
-  // Sign-in-only USER_DELEGATED app. Same `kind` as the OAuth example but
-  // with NO `requestedScopes` — the resulting Auth0 client can't be used
-  // against the ERP API (its access_token has identity claims suppressed
-  // by the T3OS post-login Action). The point is to act as a pure OIDC
-  // identity provider for third-party "Sign in with T3OS" buttons.
+  // Sign-in-only USER_DELEGATED app. Same `kind` as the OAuth example
+  // but with NO T3OS data scopes (no `all_resources_reader` etc.) — the
+  // resulting Auth0 client can't be used against the ERP API (its
+  // access_token has identity claims suppressed by the T3OS post-login
+  // Action). The point is to act as a pure OIDC identity provider for
+  // third-party "Sign in with T3OS" buttons.
+  //
+  // `requestedScopes` MUST include `profile` and `email`. T3OS's consent
+  // gate cross-checks every scope on the /authorize URL against this
+  // list and rejects with "Permission mismatch" if anything is missing.
+  // `openid` and `offline_access` are implicit (the OAuth hello-world
+  // doesn't list them either and consent works fine), but `profile` and
+  // `email` are NOT — they have to be registered explicitly even though
+  // they're standard OIDC scopes.
   const slug = `${cfg.oidcAppSlugPrefix}-${Date.now()}`;
   const data = await gql<{
     registerApp: {
@@ -328,7 +337,7 @@ async function registerOidcApp(cfg: Config): Promise<RegistrationResult> {
         name: cfg.oidcAppName,
         slug,
         redirectUris: [`${cfg.oidcHostUrl}/oauth/callback`],
-        requestedScopes: [],
+        requestedScopes: ['profile', 'email'],
         ...marketplaceFieldsOidc(cfg.oidcHostUrl),
       },
     },
