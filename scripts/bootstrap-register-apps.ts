@@ -309,13 +309,17 @@ async function registerOidcApp(cfg: Config): Promise<RegistrationResult> {
   // Action). The point is to act as a pure OIDC identity provider for
   // third-party "Sign in with T3OS" buttons.
   //
-  // `requestedScopes` MUST include `profile` and `email`. T3OS's consent
-  // gate cross-checks every scope on the /authorize URL against this
-  // list and rejects with "Permission mismatch" if anything is missing.
-  // `openid` and `offline_access` are implicit (the OAuth hello-world
-  // doesn't list them either and consent works fine), but `profile` and
-  // `email` are NOT — they have to be registered explicitly even though
-  // they're standard OIDC scopes.
+  // `requestedScopes` MUST list EVERY scope the app will send on the
+  // /authorize URL — including `openid` and `offline_access`. T3OS's
+  // OIDC-only consent gate (validateOAuthConsentSession with
+  // flow_kind=oidc_only) rejects the consent session with
+  // `scopes_outside_app_envelope` if anything on the wire isn't in this
+  // list. This is asymmetric with the regular OAuth consent gate, which
+  // appears to treat `openid`/`offline_access` as implicit (the OAuth
+  // hello-world registers only `all_resources_reader` and its consent
+  // flow works fine). The asymmetry is a backend wart that probably
+  // wants ironing out — `registerApp` could auto-augment OIDC-standard
+  // scopes for USER_DELEGATED apps — but for now, list them explicitly.
   const slug = `${cfg.oidcAppSlugPrefix}-${Date.now()}`;
   const data = await gql<{
     registerApp: {
@@ -337,7 +341,7 @@ async function registerOidcApp(cfg: Config): Promise<RegistrationResult> {
         name: cfg.oidcAppName,
         slug,
         redirectUris: [`${cfg.oidcHostUrl}/oauth/callback`],
-        requestedScopes: ['profile', 'email'],
+        requestedScopes: ['openid', 'profile', 'email', 'offline_access'],
         ...marketplaceFieldsOidc(cfg.oidcHostUrl),
       },
     },

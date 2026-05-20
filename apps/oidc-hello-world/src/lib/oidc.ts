@@ -41,12 +41,15 @@ export function buildAuthorizeUrl(args: {
     // resulting access_token will have its identity claims suppressed by the
     // T3OS Auth0 Action and is unusable against the ERP API.
     //
-    // GOTCHA (registration-time, not visible here): T3OS's consent gate
-    // cross-checks every scope on this URL against the app's registered
-    // `requestedScopes`. `openid` + `offline_access` are implicit, but
-    // `profile` and `email` are NOT — they must be in `requestedScopes`
-    // when the app is registered or the consent screen rejects with
-    // "Permission mismatch". See scripts/bootstrap-register-apps.ts.
+    // GOTCHA (registration-time, not visible here): T3OS's OIDC-only
+    // consent gate cross-checks every scope on this URL against the
+    // app's registered `requestedScopes` — including `openid` and
+    // `offline_access`. Missing any of them triggers
+    // `scopes_outside_app_envelope` before the consent screen renders.
+    // The OAuth consent gate appears more lenient (the OAuth hello-world
+    // registers only `all_resources_reader` and works fine despite
+    // asking for `openid offline_access` on the wire), but the OIDC
+    // gate is strict. See scripts/bootstrap-register-apps.ts.
     scope: 'openid profile email offline_access',
     // GOTCHA 1: `audience` is required even though we never call an API.
     // Auth0 won't issue tokens at the /oauth/token step without it —
