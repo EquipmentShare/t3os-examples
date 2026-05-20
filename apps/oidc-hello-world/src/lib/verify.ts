@@ -17,10 +17,25 @@
 // T3OS Auth0 post-login Action — that's the canonical T3OS user id. We
 // surface it on the signed-in page.
 //
-// We use jose's createRemoteJWKSet (JWKS cache built in) + jwtVerify. Same
-// library the dev-portal snippet uses.
+// SIGNING ALGORITHM DISPATCH:
+//
+// Auth0 confidential clients ("Regular Web Application" template) default
+// to HS256 — the id_token is HMAC-signed using the client_secret as the
+// key. Modern recommendation is RS256 + JWKS, but T3OS's `registerApp` is
+// currently leaving the Auth0 app on the HS256 default, so we have to
+// handle both. The dispatch:
+//
+//   - RS*/PS*/ES*  → JWKS verification (fetch public key by `kid`)
+//   - HS*          → HMAC verification with client_secret as key
+//
+// Both are spec-compliant. HS* requires that the verifier hold the
+// client_secret, which is fine here (confidential client, secret is
+// server-side only) but would be unsafe in a public client. Real-world
+// OIDC integrations frequently need both because IdP configuration isn't
+// always under the integrator's control — the dispatch you see here is
+// production-realistic, not just a hello-world quirk.
 
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify, type JWTPayload } from 'jose';
 import { env } from './env';
 
 interface IdClaims extends JWTPayload {
@@ -41,17 +56,44 @@ function getJwks() {
   return jwks;
 }
 
+function isAsymmetricAlg(alg: string): boolean {
+  return /^(RS|PS|ES)\d/.test(alg) || alg === 'EdDSA';
+}
+
+function isHmacAlg(alg: string): boolean {
+  return /^HS\d/.test(alg);
+}
+
 export async function verifyIdToken(idToken: string, expectedNonce: string): Promise<IdClaims> {
   const clientId = env.auth0ClientId();
   const issuer = `https://${env.auth0Domain()}/`;
 
-  // jwtVerify checks signature, iss, aud, and time-based claims. azp + nonce
-  // are not standard OIDC pins, so we check them manually below.
-  const { payload } = await jwtVerify<IdClaims>(idToken, getJwks(), {
-    issuer,
-    audience: clientId,
-    algorithms: ['RS256'],
-  });
+  const { alg } = decodeProtectedHeader(idToken);
+  if (typeof alg !== 'string') {
+    throw new Error('id_token header missing `alg` — refusing to verify');
+  }
+
+  // Dispatch the verification key by algorithm class. See top-of-file
+  // comment for why both branches exist.
+  let result;
+  if (isAsymmetricAlg(alg)) {
+    result = await jwtVerify<IdClaims>(idToken, getJwks(), {
+      issuer,
+      audience: clientId,
+      algorithms: [alg],
+    });
+  } else if (isHmacAlg(alg)) {
+    const secret = new TextEncoder().encode(env.auth0ClientSecret());
+    result = await jwtVerify<IdClaims>(idToken, secret, {
+      issuer,
+      audience: clientId,
+      algorithms: [alg],
+    });
+  } else {
+    throw new Error(`id_token signed with unsupported alg: ${alg}`);
+  }
+
+  const { payload } = result;
 
   if (payload.azp !== clientId) {
     // See top-of-file comment — sharing an API audience between Auth0 apps
