@@ -14,8 +14,9 @@
 // token). Tokens are issued by Auth0 against an audience we control, so for
 // THIS hello-world we trust them by virtue of having just received them from
 // Auth0 over TLS. Production apps that pass tokens between services should
-// verify signatures with Auth0's JWKS — see the workspace app for a JWKS
-// verification example.
+// verify signatures with Auth0's JWKS — see `apps/oidc-hello-world/src/lib/
+// verify.ts` for a JWKS-backed id_token verifier (iss + aud + azp + nonce
+// pinning), or `apps/workspace-hello-world` for the install-JWT equivalent.
 
 import { decodeJwt } from 'jose';
 import { env } from './env';

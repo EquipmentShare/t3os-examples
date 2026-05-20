@@ -2,7 +2,7 @@
   "name": "t3os-examples",
   "private": true,
   "version": "0.0.0",
-  "description": "Example apps demonstrating the T3OS developer auth flows",
+  "description": "Reference apps demonstrating the three T3OS developer auth flows (OAuth, workspace-install, OIDC sign-in)",
   "license": "MIT",
   "repository": {
     "type": "git",
