@@ -30,8 +30,12 @@ export async function GET(req: NextRequest) {
   try {
     claims = await verifyInstallToken(installToken);
   } catch (e) {
+    // A network-level fetch failure surfaces as `TypeError: fetch failed`
+    // with the real diagnostic (ENOTFOUND, timeout, cert error, ...) on
+    // `e.cause` — log the full chain, it never contains token material.
+    console.error('install-complete: install token verification failed', e);
     const msg = e instanceof Error ? e.message : 'jwt_verify_failed';
-    redirect(`/?error=${encodeURIComponent(msg)}`);
+    redirect(`/?error=${encodeURIComponent(`verify_failed: ${msg}`)}`);
   }
 
   try {
@@ -43,8 +47,9 @@ export async function GET(req: NextRequest) {
       scopes: claims.scopes,
     });
   } catch (e) {
+    console.error('install-complete: persisting install to KV failed', e);
     const msg = e instanceof Error ? e.message : 'persist_failed';
-    redirect(`/?error=${encodeURIComponent(msg)}`);
+    redirect(`/?error=${encodeURIComponent(`persist_failed: ${msg}`)}`);
   }
 
   const session = await getSession();
