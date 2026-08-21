@@ -3,6 +3,11 @@ import { env } from '@/lib/env';
 import { gql } from '@/lib/graphql';
 import { getSession } from '@/lib/session';
 import { verifyDelegatedAccessToken } from '@/lib/verify';
+import {
+  fallbackWorkspaceName,
+  WorkspaceSwitcher,
+  type WorkspaceOption,
+} from '@/components/workspace-switcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +22,8 @@ const DASHBOARD_QUERY = `
     getWorkspaceById(id: $workspaceId) {
       id
       name
+      description
+      logoUrl
     }
     listContacts(filter: { workspaceId: $workspaceId }, page: $page) {
       items {
@@ -36,7 +43,12 @@ type ContactItem =
   | { __typename: 'PersonContact'; id: string; name: string; email: string };
 
 interface DashboardData {
-  getWorkspaceById: { id: string; name: string };
+  getWorkspaceById: {
+    id: string;
+    name: string;
+    description?: string | null;
+    logoUrl?: string | null;
+  };
   listContacts: {
     items: ContactItem[];
     page: { totalItems: number };
@@ -72,6 +84,10 @@ export default async function Dashboard() {
   }
 
   let workspaceName: string | null = null;
+  let currentWorkspace: WorkspaceOption = {
+    workspaceId: session.workspaceId,
+    name: fallbackWorkspaceName(session.workspaceId),
+  };
   let contacts: ContactItem[] = [];
   let totalContacts = 0;
   let queryError: string | null = null;
@@ -81,6 +97,12 @@ export default async function Dashboard() {
       page: { number: 1, size: 5 },
     });
     workspaceName = data.getWorkspaceById.name;
+    currentWorkspace = {
+      workspaceId: data.getWorkspaceById.id,
+      name: data.getWorkspaceById.name,
+      description: data.getWorkspaceById.description ?? undefined,
+      logoUrl: data.getWorkspaceById.logoUrl ?? undefined,
+    };
     if (data.listContacts) {
       contacts = data.listContacts.items;
       totalContacts = data.listContacts.page.totalItems;
@@ -88,6 +110,17 @@ export default async function Dashboard() {
   } catch (e) {
     queryError = e instanceof Error ? e.message : String(e);
   }
+
+  const rememberedWorkspaces =
+    session.knownWorkspaces ??
+    (session.knownWorkspaceIds ?? []).map((workspaceId) => ({
+      workspaceId,
+      name: fallbackWorkspaceName(workspaceId),
+    }));
+  const workspaceOptions = [
+    currentWorkspace,
+    ...rememberedWorkspaces.filter((workspace) => workspace.workspaceId !== session.workspaceId),
+  ];
 
   return (
     <main>
@@ -178,9 +211,7 @@ export default async function Dashboard() {
             Sign out
           </button>
         </form>
-        <a className="button button-secondary" href="/workspaces">
-          Switch workspace
-        </a>
+        <WorkspaceSwitcher workspaces={workspaceOptions} currentWorkspaceId={session.workspaceId} />
         <a
           className="button button-secondary"
           href={`${env.webUrlBase()}/app/${session.workspaceId}/settings/connected-apps`}

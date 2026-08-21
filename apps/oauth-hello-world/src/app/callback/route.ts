@@ -15,6 +15,7 @@ import type { NextRequest } from 'next/server';
 import { exchangeCodeForTokens } from '@/lib/oauth';
 import { getSession, rememberWorkspace } from '@/lib/session';
 import { verifyDelegatedAccessToken, verifyIdToken } from '@/lib/verify';
+import { gql } from '@/lib/graphql';
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -91,7 +92,20 @@ export async function GET(req: NextRequest) {
   delete session.oauthState;
   delete session.oidcNonce;
   delete session.oauthWorkspaceId;
-  rememberWorkspace(session, workspaceId, idClaims['https://es-erp/uid']!);
+  let workspaceName: string | undefined;
+  try {
+    const workspaceData = await gql<{ getWorkspaceById: { id: string; name: string } | null }>(
+      tokens.access_token,
+      `query WorkspaceSwitcher($workspaceId: String!) { getWorkspaceById(id: $workspaceId) { id name } }`,
+      { workspaceId },
+    );
+    if (workspaceData.getWorkspaceById?.id === workspaceId) {
+      workspaceName = workspaceData.getWorkspaceById.name;
+    }
+  } catch {
+    // Workspace identity enriches the selector but must not make a valid login fail.
+  }
+  rememberWorkspace(session, workspaceId, idClaims['https://es-erp/uid']!, workspaceName);
   await session.save();
 
   redirect('/dashboard');

@@ -151,3 +151,260 @@ button:hover,
   color: var(--muted);
   font-size: 0.875rem;
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.workspace-switcher {
+  position: relative;
+}
+
+.workspace-trigger {
+  width: min(290px, 70vw);
+  justify-content: flex-start;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.workspace-trigger:hover {
+  background: #1d2130;
+}
+
+.workspace-trigger > span:not(.workspace-avatar) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-trigger > svg {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.workspace-trigger > svg.open {
+  transform: rotate(180deg);
+}
+
+.workspace-avatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.workspace-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(124, 92, 255, 0.18);
+  color: #a995ff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.workspace-menu {
+  width: 360px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.42);
+}
+
+.workspace-switcher > .workspace-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  left: 0;
+}
+
+.workspace-menu-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-menu-title {
+  width: 100%;
+  justify-content: space-between;
+  padding: 5px 3px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.workspace-menu-title:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.workspace-menu-title svg,
+.workspace-search svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.workspace-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: #0f1219;
+  color: var(--muted);
+}
+
+.workspace-search input[type='search'] {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.workspace-options {
+  display: grid;
+  gap: 4px;
+  max-height: 330px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.workspace-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--text);
+}
+
+.workspace-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+  text-decoration: none;
+}
+
+.workspace-option.current {
+  border-color: rgba(124, 92, 255, 0.55);
+  background: rgba(124, 92, 255, 0.12);
+}
+
+.workspace-option-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.workspace-option-copy strong,
+.workspace-option-copy > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-option-copy strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.workspace-option-copy > span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workspace-check {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  color: var(--success);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.workspace-empty {
+  margin: 0;
+  padding: 24px 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.workspace-menu-foot {
+  padding: 9px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-menu-foot a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.workspace-menu-foot a:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.workspace-menu-foot a > span {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+main > .workspace-menu {
+  width: min(520px, 100%);
+}
+
+@media (max-width: 520px) {
+  .workspace-switcher,
+  .workspace-trigger {
+    width: 100%;
+  }
+
+  .workspace-switcher > .workspace-menu {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
