@@ -14,7 +14,7 @@ All three apps run against **production T3OS Auth0** and are registered as PUBLI
 
 ## Which one do I want?
 
-- **OAuth Hello World** — your app needs to act _on behalf of a specific user_. The user signs in via T3OS, picks a workspace at the consent screen, you get a bearer token scoped to them, queries return data they personally have access to. Use when building integrations a user signs into (personal-productivity tools, "Connect to T3OS" buttons on other SaaS, etc.).
+- **OAuth Hello World** — your app needs to act _on behalf of a specific user_. The user signs in via T3OS, targets a workspace, and gets a bearer token scoped to them. Existing exact grants are reused without repeated consent; launcher workspace targets and explicit switching stay unambiguous. Use when building integrations a user signs into (personal-productivity tools, "Connect to T3OS" buttons on other SaaS, etc.).
 - **Workspace Hello World** — your app needs to act _on behalf of a workspace_, without a user in the loop. A workspace admin installs you once; you get a workspace-scoped API key; you keep working until uninstalled. Use when building syncs, exports, scheduled jobs, webhooks — anything unattended.
 - **OIDC Hello World** — your app only needs to know _who_ the user is, not what they can do in T3OS. T3OS acts as your pure OpenID Connect identity provider — no workspace pick at consent time, no API access. Use for "Sign in with T3OS" buttons in third-party apps that have their own data model and just want a verified identity.
 
@@ -22,7 +22,7 @@ All three apps run against **production T3OS Auth0** and are registered as PUBLI
 
 Each Hello World walks one auth flow end-to-end and renders the credentials/claims it produces. The OAuth and Workspace apps additionally make one GraphQL call (`getWorkspaceById`) to prove the credential works against the live ERP API; the OIDC app deliberately doesn't — its whole point is that you can't.
 
-All three apps are written **without an OAuth SDK**. PKCE challenge generation, the `/authorize` URL builder, the `/oauth/token` POST, JWKS-backed JWT verification, and token storage are visible in the source so you can transliterate the pattern to any stack.
+All three apps are written **without an OAuth SDK**. PKCE challenge generation, nonce/state handling, the `/authorize` URL builder, the `/oauth/token` POST, JWKS-backed JWT verification, workspace targeting, and token storage are visible in the source so you can transliterate the pattern to any stack.
 
 ## Repository shape
 
@@ -64,7 +64,7 @@ Node 22+ required (see `.nvmrc`).
 
 These are deliberately minimal "hello-world" reference apps. A real production integration needs:
 
-- **For OAuth apps:** a refresh-token rotation strategy (this example refreshes on every request; production should refresh on-demand and handle the refresh-token revocation edge case), proper sign-out via `/v2/logout` to clear the Auth0 SSO cookie, and probably a database for multi-device sessions instead of cookie-only storage.
+- **For OAuth apps:** server-side session storage for multi-device use and a durable user/workspace connection table when users may have many grants. This example remembers only the five most recent workspace ids in its encrypted browser cookie. App sign-out intentionally preserves the preferred workspace and grant; use Auth0 `/v2/logout` only when the user explicitly asks to end their T3OS SSO session too.
 - **For workspace-installed apps:** redundant JWKS caching (this example uses `jose`'s default in-memory cache; production may want a persistent cache to survive cold starts), retry/backoff on transient T3OS errors, and a dead-letter for permanent failures.
 - **For OIDC apps:** persistent JWKS caching (cold starts re-fetch the JWKS otherwise), keying your own user table off the `https://es-erp/uid` claim rather than `sub` so user identity survives an Auth0 connection migration, and account-linking logic if the same human can sign in via multiple identity sources.
 - **Scope discipline:** the OAuth demo requests the broadest read-only scope (`all_resources_reader`) for clarity. Real integrations should request the narrowest scope that satisfies their queries (e.g., `contact_reader` if you only need contacts) — the T3OS consent UI shows users every scope you're asking for. The OIDC app requests none.

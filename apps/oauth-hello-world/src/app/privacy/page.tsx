@@ -15,11 +15,12 @@ export default function Privacy() {
         to <code>t3os-oauth-hello-world.vercel.app</code>:
       </p>
       <ul>
-        <li>Your Auth0 access token, refresh token, and id token.</li>
+        <li>Your Auth0 access and refresh tokens. The raw id token is not retained.</li>
         <li>The expiry timestamp of the access token.</li>
         <li>
           The <code>workspace_id</code> claim from your access token.
         </li>
+        <li>Your stable T3OS user id and up to five recent workspace ids.</li>
       </ul>
       <p>
         The cookie is sealed with a server-only key (via{' '}
@@ -30,17 +31,17 @@ export default function Privacy() {
       <h2>What this app does NOT store</h2>
       <p>
         Nothing is written to a server-side database. There is no analytics tracking, no logging of
-        request bodies, and no third-party data sharing. When you click &quot;Sign out&quot; the
-        cookie is destroyed. When you revoke the grant via T3OS, the next request from this app will
-        be rejected by T3OS and the session will be cleared automatically.
+        request bodies, and no third-party data sharing. When you click &quot;Sign out&quot;, tokens
+        and identity are removed while the preferred/recent workspace hints remain. When you revoke
+        the grant via T3OS, the next authenticated request is rejected and the session is cleared.
       </p>
 
       <h2>What this app reads from T3OS</h2>
       <p>
         With your consent, this app holds an access token scoped to{' '}
         <code>all_resources_reader</code>. It uses that scope to make one query:{' '}
-        <code>getWorkspaceById</code>, which returns your workspace&apos;s name. No other queries
-        are issued.
+        <code>getWorkspaceById</code> plus a five-item <code>listContacts</code> page to prove the
+        delegated token works. No writes are issued.
       </p>
 
       <h2>Source</h2>

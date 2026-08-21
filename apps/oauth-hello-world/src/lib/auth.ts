@@ -1,6 +1,6 @@
 // Returns a valid access token for the current session, refreshing it if
-// it's about to expire. Returns null when the session is dead and the
-// caller should redirect to /sign-in.
+// needed. Call this from a Route Handler so refresh-token rotation can be
+// persisted to the encrypted cookie.
 //
 // Refresh-token support depends on the T3OS Auth0 application allowing
 // the refresh_token grant + the API allowing offline access. If neither
@@ -52,19 +52,7 @@ export async function getValidAccessToken(): Promise<string | null> {
       session.refreshToken = tokens.refresh_token;
     }
     session.expiresAt = Date.now() + tokens.expires_in * 1000;
-    // session.save() also writes to the cookie — same restriction. So this
-    // path only works when getValidAccessToken is called from a Route Handler
-    // or Server Action. From a Server Component, the save throws and we fall
-    // through to the catch — the caller still gets the new (in-memory)
-    // accessToken in that single request, but the rotated cookie isn't
-    // persisted. Acceptable for this hello-world; production code paths
-    // would either refresh via a server action or proxy through an API
-    // route.
-    try {
-      await session.save();
-    } catch {
-      // ignore — read-only context (Server Component)
-    }
+    await session.save();
     return session.accessToken;
   } catch {
     // Refresh failed — most often because the grant was revoked, or the

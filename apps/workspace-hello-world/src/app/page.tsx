@@ -77,7 +77,7 @@ export default async function Home({
         <h2 style={{ marginTop: 0 }}>Install in your workspace</h2>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Paste the id of any T3OS workspace you have admin access to. You can find it in any T3OS
-          URL: <code>https://erp.estrack.com/app/&lt;workspace_id&gt;/...</code>
+          URL: <code>https://app.t3os.ai/app/&lt;workspace_id&gt;/...</code>
         </p>
         <input type="hidden" name="appId" value={env.appId()} />
         <label

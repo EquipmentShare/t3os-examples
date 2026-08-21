@@ -3,17 +3,18 @@
 //
 //   1. Verify state matches (CSRF defence).
 //   2. POST the code + PKCE verifier + client secret to Auth0's /oauth/token.
-//   3. Decode the access token to pull out the workspace_id claim.
-//   4. Persist tokens to the session, clear the one-shot PKCE/state values.
+//   3. Verify both JWTs (signature, iss, aud, azp, exp, nonce).
+//   4. Reject a workspace claim that differs from an explicit target.
+//   5. Persist tokens + workspace preference and clear one-shot state.
 //
 // On any failure we send the user back to / with an `?error=<reason>` so the
 // landing page can surface a helpful message.
 
-import { decodeJwt } from 'jose';
 import { redirect } from 'next/navigation';
 import type { NextRequest } from 'next/server';
-import { exchangeCodeForTokens, extractWorkspaceId } from '@/lib/oauth';
-import { getSession } from '@/lib/session';
+import { exchangeCodeForTokens } from '@/lib/oauth';
+import { getSession, rememberWorkspace } from '@/lib/session';
+import { verifyDelegatedAccessToken, verifyIdToken } from '@/lib/verify';
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -38,6 +39,9 @@ export async function GET(req: NextRequest) {
   if (!session.pkceVerifier) {
     redirect('/?error=missing_verifier');
   }
+  if (!session.oidcNonce) {
+    redirect('/?error=missing_nonce');
+  }
 
   let tokens;
   try {
@@ -51,10 +55,19 @@ export async function GET(req: NextRequest) {
   }
 
   let workspaceId: string;
+  let idClaims;
   try {
-    workspaceId = extractWorkspaceId(tokens.access_token);
+    const [verifiedIdClaims, accessClaims] = await Promise.all([
+      verifyIdToken(tokens.id_token, session.oidcNonce),
+      verifyDelegatedAccessToken(tokens.access_token),
+    ]);
+    idClaims = verifiedIdClaims;
+    workspaceId = accessClaims['https://es-erp/workspace_id']!;
+    if (session.oauthWorkspaceId && session.oauthWorkspaceId !== workspaceId) {
+      throw new Error('T3OS authorization returned a different workspace than requested');
+    }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'workspace_claim_missing';
+    const msg = e instanceof Error ? e.message : 'token_verification_failed';
     redirect(`/?error=${encodeURIComponent(msg)}`);
   }
 
@@ -62,7 +75,6 @@ export async function GET(req: NextRequest) {
   // We do NOT keep the raw id_token — only the few claims we display.
   // Keeping the full id_token blows the cookie past Chrome's 4KB limit
   // once the access token is added.
-  const idClaims = decodeJwt(tokens.id_token) as Record<string, unknown>;
   session.accessToken = tokens.access_token;
   if (tokens.refresh_token) {
     session.refreshToken = tokens.refresh_token;
@@ -70,12 +82,16 @@ export async function GET(req: NextRequest) {
   session.expiresAt = Date.now() + tokens.expires_in * 1000;
   session.workspaceId = workspaceId;
   session.user = {
-    sub: String(idClaims.sub),
+    uid: idClaims['https://es-erp/uid']!,
+    sub: idClaims.sub!,
     name: typeof idClaims.name === 'string' ? idClaims.name : undefined,
     email: typeof idClaims.email === 'string' ? idClaims.email : undefined,
   };
   delete session.pkceVerifier;
   delete session.oauthState;
+  delete session.oidcNonce;
+  delete session.oauthWorkspaceId;
+  rememberWorkspace(session, workspaceId, idClaims['https://es-erp/uid']!);
   await session.save();
 
   redirect('/dashboard');

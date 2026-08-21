@@ -1,9 +1,8 @@
-import { decodeJwt } from 'jose';
 import { redirect } from 'next/navigation';
-import { getValidAccessToken } from '@/lib/auth';
 import { env } from '@/lib/env';
 import { gql } from '@/lib/graphql';
 import { getSession } from '@/lib/session';
+import { verifyDelegatedAccessToken } from '@/lib/verify';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,19 +54,22 @@ export default async function Dashboard() {
     redirect('/sign-out');
   }
 
-  // Refresh the token if it's about to expire. Returns null if the grant
-  // was revoked (the smoke test's instant-cutoff property — see README)
-  // OR if the access token has expired and we have no refresh token to
-  // exchange for a new one.
-  const accessToken = await getValidAccessToken();
-  if (!accessToken) {
-    // Bounce to /sign-out which clears the cookie (Route Handler — can
-    // modify cookies) and redirects to /. Server Components can't destroy
-    // the session themselves.
-    redirect('/sign-out');
+  // Cookie writes are forbidden in Server Components. Refresh in a Route
+  // Handler so rotated refresh tokens are always persisted before rendering.
+  if (!session.expiresAt || session.expiresAt - Date.now() <= 30_000) {
+    redirect('/refresh');
   }
 
-  const accessClaims = decodeJwt(accessToken) as Record<string, unknown>;
+  const accessToken = session.accessToken;
+  let accessClaims;
+  try {
+    accessClaims = await verifyDelegatedAccessToken(accessToken);
+  } catch {
+    redirect('/sign-out');
+  }
+  if (accessClaims['https://es-erp/workspace_id'] !== session.workspaceId) {
+    redirect('/sign-out');
+  }
 
   let workspaceName: string | null = null;
   let contacts: ContactItem[] = [];
@@ -104,6 +106,8 @@ export default async function Dashboard() {
           <dd>{session.user.email ?? '(not set)'}</dd>
           <dt>sub</dt>
           <dd>{session.user.sub}</dd>
+          <dt>stable T3OS uid</dt>
+          <dd>{session.user.uid}</dd>
         </dl>
       </div>
 
@@ -119,48 +123,6 @@ export default async function Dashboard() {
           <dt>expires</dt>
           <dd>{new Date(session.expiresAt ?? 0).toISOString()}</dd>
         </dl>
-      </div>
-
-      <h2>Raw access token (for inspecting claims)</h2>
-      <div className="card">
-        <p style={{ marginTop: 0, color: 'var(--muted)', fontSize: '0.875rem' }}>
-          This is the access token T3OS issued. The browser only sees it because we render it
-          server-side and embed it in HTML — outside this debug surface, the token is server-only,
-          sealed inside the encrypted iron-session cookie. Paste into{' '}
-          <a href="https://jwt.io" target="_blank" rel="noreferrer">
-            jwt.io
-          </a>{' '}
-          to inspect the claims, or scroll up to see them already decoded.
-        </p>
-        <details>
-          <summary
-            style={{
-              cursor: 'pointer',
-              color: 'var(--accent)',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-            }}
-          >
-            Show / copy access token
-          </summary>
-          <pre
-            style={{
-              marginTop: '0.75rem',
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              padding: '0.75rem',
-              fontSize: '0.7rem',
-              lineHeight: 1.4,
-              overflowX: 'auto',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-              color: 'var(--text)',
-            }}
-          >
-            {accessToken}
-          </pre>
-        </details>
       </div>
 
       <h2>One live GraphQL call: getWorkspaceById + listContacts</h2>
@@ -216,6 +178,9 @@ export default async function Dashboard() {
             Sign out
           </button>
         </form>
+        <a className="button button-secondary" href="/workspaces">
+          Switch workspace
+        </a>
         <a
           className="button button-secondary"
           href={`${env.webUrlBase()}/app/${session.workspaceId}/settings/connected-apps`}
@@ -225,10 +190,11 @@ export default async function Dashboard() {
       </div>
 
       <div className="footer">
-        <strong>Sign out vs revoke:</strong> &quot;Sign out&quot; clears the session cookie but
-        leaves your grant intact, so signing in again skips the consent screen. The &quot;Manage /
-        revoke&quot; link goes to T3OS&apos;s connected-apps settings where you can delete the grant
-        entirely — once revoked, the same token stops working immediately, even before expiry. See{' '}
+        <strong>Sign out vs revoke:</strong> &quot;Sign out&quot; clears this app&apos;s credentials
+        but leaves your grant and preferred workspace intact, so signing in again skips consent when
+        the scopes are unchanged. &quot;Switch workspace&quot; targets another known grant or lets
+        T3OS collect a new choice. The &quot;Manage / revoke&quot; link deletes the grant entirely —
+        once revoked, the same token stops working immediately, even before expiry. See{' '}
         <a href="https://github.com/EquipmentShare/t3os-examples">the README</a> for the wire-level
         details.
       </div>

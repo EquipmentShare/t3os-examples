@@ -24,3 +24,9 @@ export function generateState(): string {
   // session, echoed back as `?state=...`, must match exactly.
   return base64UrlEncode(randomBytes(16));
 }
+
+export function generateNonce(): string {
+  // Echoed back inside the verified id_token. This binds the token to the
+  // browser session that started this authorization request.
+  return base64UrlEncode(randomBytes(16));
+}

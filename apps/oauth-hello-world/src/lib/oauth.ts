@@ -9,16 +9,6 @@
 //    Confidential client — we send `client_secret` from server-side env vars,
 //    so the secret never reaches the browser.
 //
-// `decodeJwt` from jose is a *parser*, not a verifier. We use it for display
-// (read user-facing claims from id_token, read workspace_id from access
-// token). Tokens are issued by Auth0 against an audience we control, so for
-// THIS hello-world we trust them by virtue of having just received them from
-// Auth0 over TLS. Production apps that pass tokens between services should
-// verify signatures with Auth0's JWKS — see `apps/oidc-hello-world/src/lib/
-// verify.ts` for a JWKS-backed id_token verifier (iss + aud + azp + nonce
-// pinning), or `apps/workspace-hello-world` for the install-JWT equivalent.
-
-import { decodeJwt } from 'jose';
 import { env } from './env';
 
 export interface TokenResponse {
@@ -32,8 +22,10 @@ export interface TokenResponse {
 
 export function buildAuthorizeUrl(args: {
   state: string;
+  nonce: string;
   codeChallenge: string;
   scopes: string[];
+  workspaceId?: string;
 }): string {
   const params = new URLSearchParams({
     client_id: env.auth0ClientId(),
@@ -42,13 +34,27 @@ export function buildAuthorizeUrl(args: {
     // `openid` is required to receive an id_token (used here to display
     // user name/email). `offline_access` is required to receive a
     // refresh_token. Everything else is a T3OS-defined scope.
-    scope: ['openid', 'offline_access', ...args.scopes].join(' '),
+    scope: ['openid', 'profile', 'email', 'offline_access', ...args.scopes].join(' '),
     audience: env.auth0Audience(),
     state: args.state,
+    nonce: args.nonce,
     code_challenge: args.codeChallenge,
     code_challenge_method: 'S256',
   });
+  if (args.workspaceId) {
+    // T3OS app-launcher URLs carry `?workspace=...`. Forwarding that target
+    // makes the authorization unambiguous and lets an existing exact grant
+    // skip the consent screen safely.
+    params.set('ext-workspace-id', args.workspaceId);
+  }
   return `https://${env.auth0Domain()}/authorize?${params.toString()}`;
+}
+
+export function normalizeWorkspaceTarget(value: string | null | undefined): string | undefined {
+  if (!value || value.length > 256 || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value)) {
+    return undefined;
+  }
+  return value;
 }
 
 export async function exchangeCodeForTokens(args: {
@@ -92,18 +98,4 @@ export async function refreshTokens(refreshToken: string): Promise<TokenResponse
     throw new Error(`Auth0 /oauth/token refresh returned ${res.status}: ${await res.text()}`);
   }
   return (await res.json()) as TokenResponse;
-}
-
-export function extractWorkspaceId(accessToken: string): string {
-  // Custom claim set by T3OS's Auth0 post-login Action based on the
-  // workspace the user picked on the /oauth/consent screen.
-  const claims = decodeJwt(accessToken) as Record<string, unknown>;
-  const id = claims['https://es-erp/workspace_id'];
-  if (typeof id !== 'string' || id.length === 0) {
-    throw new Error(
-      `Access token is missing the "https://es-erp/workspace_id" claim. ` +
-        `Was the audience set to ${env.auth0Audience()}?`,
-    );
-  }
-  return id;
 }
