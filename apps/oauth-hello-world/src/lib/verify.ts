@@ -8,6 +8,7 @@ import { env } from './env';
 export interface UserClaims extends JWTPayload {
   email?: string;
   name?: string;
+  picture?: string;
   nonce?: string;
   azp?: string;
   'https://es-erp/uid'?: string;

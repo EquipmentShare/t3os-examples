@@ -24,6 +24,8 @@ Each Hello World walks one auth flow end-to-end and renders the credentials/clai
 
 All three apps are written **without an OAuth SDK**. PKCE challenge generation, nonce/state handling, the `/authorize` URL builder, the `/oauth/token` POST, JWKS-backed JWT verification, workspace targeting, and token storage are visible in the source so you can transliterate the pattern to any stack.
 
+The OAuth example also demonstrates the copy-owned [`account-workspace-menu`](https://github.com/EquipmentShare/t3os-ui-registry) from the public T3OS UI registry. The app supplies verified user/workspace metadata through its own adapter; the shared UI source never handles tokens or network access.
+
 ## Repository shape
 
 ```

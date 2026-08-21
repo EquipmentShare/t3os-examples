@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
     sub: idClaims.sub!,
     name: typeof idClaims.name === 'string' ? idClaims.name : undefined,
     email: typeof idClaims.email === 'string' ? idClaims.email : undefined,
+    picture: typeof idClaims.picture === 'string' ? idClaims.picture : undefined,
   };
   delete session.pkceVerifier;
   delete session.oauthState;
