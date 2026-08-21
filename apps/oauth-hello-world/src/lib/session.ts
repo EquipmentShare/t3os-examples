@@ -32,6 +32,7 @@ export type SessionData = {
   preferredWorkspaceId?: string;
   preferenceUserUid?: string;
   knownWorkspaceIds?: string[];
+  knownWorkspaces?: Array<{ workspaceId: string; name: string }>;
   user?: { uid: string; name?: string; email?: string; sub: string };
 };
 
@@ -72,14 +73,27 @@ export function rememberWorkspace(
   session: SessionData,
   workspaceId: string,
   userUid: string,
+  workspaceName?: string,
 ): void {
   if (session.preferenceUserUid !== userUid) {
     session.knownWorkspaceIds = [];
+    session.knownWorkspaces = [];
   }
   session.preferenceUserUid = userUid;
   session.preferredWorkspaceId = workspaceId;
-  session.knownWorkspaceIds = [
-    workspaceId,
-    ...(session.knownWorkspaceIds ?? []).filter((id) => id !== workspaceId),
+  const legacy = (session.knownWorkspaceIds ?? []).map((id) => ({
+    workspaceId: id,
+    name: `Workspace ${id.length > 12 ? id.slice(-8) : id}`,
+  }));
+  const previous = session.knownWorkspaces ?? legacy;
+  session.knownWorkspaces = [
+    {
+      workspaceId,
+      name:
+        workspaceName?.trim() ||
+        `Workspace ${workspaceId.length > 12 ? workspaceId.slice(-8) : workspaceId}`,
+    },
+    ...previous.filter((workspace) => workspace.workspaceId !== workspaceId),
   ].slice(0, 5);
+  session.knownWorkspaceIds = session.knownWorkspaces.map((workspace) => workspace.workspaceId);
 }

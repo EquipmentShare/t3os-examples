@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
+import { fallbackWorkspaceName, WorkspaceSwitcher } from '@/components/workspace-switcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,9 +8,18 @@ export default async function WorkspacesPage() {
   const session = await getSession();
   if (!session.accessToken || !session.workspaceId) redirect('/');
 
-  const workspaceIds = [
-    session.workspaceId,
-    ...(session.knownWorkspaceIds ?? []).filter((id) => id !== session.workspaceId),
+  const remembered =
+    session.knownWorkspaces ??
+    (session.knownWorkspaceIds ?? []).map((workspaceId) => ({
+      workspaceId,
+      name: fallbackWorkspaceName(workspaceId),
+    }));
+  const workspaces = [
+    remembered.find((workspace) => workspace.workspaceId === session.workspaceId) ?? {
+      workspaceId: session.workspaceId,
+      name: fallbackWorkspaceName(session.workspaceId),
+    },
+    ...remembered.filter((workspace) => workspace.workspaceId !== session.workspaceId),
   ];
 
   return (
@@ -18,19 +28,11 @@ export default async function WorkspacesPage() {
       <p className="subtitle">
         Switching revalidates your T3OS membership and the app grant for that workspace.
       </p>
-      <div className="card">
-        {workspaceIds.map((workspaceId) => (
-          <p key={workspaceId}>
-            <a href={`/sign-in?workspace=${encodeURIComponent(workspaceId)}`}>
-              <code>{workspaceId}</code> —{' '}
-              {workspaceId === session.workspaceId ? 'Current' : 'Switch'} →
-            </a>
-          </p>
-        ))}
-        <p>
-          <a href="/sign-in?choose=1">Connect another workspace — choose in T3OS →</a>
-        </p>
-      </div>
+      <WorkspaceSwitcher
+        workspaces={workspaces}
+        currentWorkspaceId={session.workspaceId}
+        display="panel"
+      />
     </main>
   );
 }
