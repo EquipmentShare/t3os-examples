@@ -1,6 +1,6 @@
 # Workspace Hello World
 
-Workspace-installed auth flow against T3OS, hand-rolled with no auth SDK. Mirrors the wire-level operations of [`workspace-install-smoke-test.ts`](https://gitlab.internal.equipmentshare.com/fleet/es-erp-api/-/blob/main/services/monolith/src/services/iam/scripts/workspace-install-smoke-test.ts) in the T3OS API repo.
+Workspace-installed auth flow against T3OS, hand-rolled with no auth SDK. It exposes every wire-level step so the pattern can be adapted to another stack.
 
 **Live demo:** [t3os-workspace-hello-world.vercel.app](https://t3os-workspace-hello-world.vercel.app)
 

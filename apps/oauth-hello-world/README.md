@@ -1,6 +1,6 @@
 # OAuth Hello World
 
-User-delegated OAuth flow against T3OS, hand-rolled with no auth SDK. Mirrors the wire-level operations of [`oauth-smoke-test.ts`](https://gitlab.internal.equipmentshare.com/fleet/es-erp-api/-/blob/main/services/monolith/src/services/iam/scripts/oauth-smoke-test.ts) in the T3OS API repo.
+User-delegated OAuth flow against T3OS, hand-rolled with no auth SDK. It exposes every wire-level step so the pattern can be adapted to another stack.
 
 **Live demo:** [t3os-oauth-hello-world.vercel.app](https://t3os-oauth-hello-world.vercel.app)
 
@@ -9,20 +9,22 @@ User-delegated OAuth flow against T3OS, hand-rolled with no auth SDK. Mirrors th
 ```
  user           browser            this app           Auth0           T3OS
   │                                   │                 │              │
-  │ click "Sign in"                   │                 │              │
+  │ launcher ?workspace=...           │                 │              │
   ├──────────────►/sign-in            │                 │              │
-  │              ├─generate PKCE+state│                 │              │
+  │              ├─generate PKCE+state+nonce            │              │
+  │              ├─forward ext-workspace-id             │              │
   │              ├─save in cookie     │                 │              │
   │              └─302 → /authorize ──┼────────────────►│              │
   │                                   │                 │              │
-  │ sign in + approve consent screen  │                 │              │
-  │                                   │                 ├─consent UI ─►│
+  │ sign in; consent only for missing/changed grant     │              │
+  │                                   │                 ├─grant check ─►│
   │              ┌────────────────────┼─302 ────────────┤              │
   │              ▼ /callback?code=... │                 │              │
   │              ├─verify state       │                 │              │
   │              ├─POST /oauth/token ─┼────────────────►│              │
   │              ├─◄─{access, refresh, id}              │              │
-  │              ├─decode workspace_id claim            │              │
+  │              ├─VERIFY both JWTs + nonce              │              │
+  │              ├─validate targeted workspace_id       │              │
   │              ├─save in cookie     │                 │              │
   │              └─302 → /dashboard   │                 │              │
   │                                   │                 │              │
@@ -37,10 +39,12 @@ src/
 ├── app/
 │   ├── layout.tsx              # Root layout
 │   ├── page.tsx                # Landing — "Sign in with T3OS" button
-│   ├── sign-in/route.ts        # Step 1: generate PKCE, redirect to /authorize
-│   ├── callback/route.ts       # Step 2: receive code, exchange for tokens, redirect to /dashboard
+│   ├── sign-in/route.ts        # Step 1: PKCE/state/nonce + workspace-targeted /authorize
+│   ├── callback/route.ts       # Step 2: exchange, verify tokens/target, remember workspace
 │   ├── dashboard/page.tsx      # Step 3: display claims + run one GraphQL call
-│   ├── sign-out/route.ts       # Destroys the session cookie
+│   ├── refresh/route.ts        # Persists access + rotated refresh token in a writable context
+│   ├── workspaces/page.tsx     # Recent-workspace switcher + explicit new choice
+│   ├── sign-out/route.ts       # Clears credentials; preserves workspace preference
 │   ├── privacy/page.tsx        # Required by T3OS marketplace registration
 │   ├── terms/page.tsx          # Required by T3OS marketplace registration
 │   └── globals.css
@@ -49,7 +53,8 @@ src/
     ├── session.ts              # iron-session config + helper
     ├── pkce.ts                 # PKCE verifier/challenge + CSRF state generation
     ├── oauth.ts                # /authorize URL builder, token exchange, refresh
-    ├── auth.ts                 # getValidAccessToken — refreshes on demand
+    ├── verify.ts               # Verifies issuer/audience/azp/signature/nonce/workspace claims
+    ├── auth.ts                 # getValidAccessToken — route-handler refresh
     └── graphql.ts              # Minimal GraphQL POST helper with Bearer auth
 ```
 
@@ -74,12 +79,21 @@ src/
 
    Open <http://localhost:3000>.
 
+## Workspace-aware consent UX
+
+- T3OS app-launcher links should open your app with `?workspace=<id>`.
+- The landing and `/sign-in` routes preserve that target and send it to `/authorize` as `ext-workspace-id`.
+- The callback rejects a token for any workspace other than the one requested.
+- Signing out clears this app's credentials but remembers the preferred workspace. Signing in again can reuse the exact active grant without showing consent.
+- `Choose another workspace` deliberately omits the target so T3OS can disambiguate. The example remembers five recent workspace ids in its encrypted cookie; production apps should persist user/workspace connections server-side.
+- Consent correctly returns when scopes change, a grant is revoked, the user loses access, or no exact grant exists.
+
 ## Things this hello-world deliberately doesn't do
 
-- **No multi-device sessions.** Cookie-only — bring the browser, bring the session. Production apps that need a session across devices should store the tokens server-side and reference them by a session id in the cookie.
-- **No `/v2/logout` round-trip on sign-out.** "Sign out" clears this app's cookie only; your Auth0 SSO session lives on. Production sign-out usually redirects to `https://{AUTH0_DOMAIN}/v2/logout?client_id=...&returnTo=...` to kill the SSO cookie too.
+- **No multi-device sessions.** Cookie-only — bring the browser, bring the session. Production apps should store credentials and all connected workspaces server-side and keep only an opaque session id in the cookie.
+- **No `/v2/logout` round-trip on app sign-out.** "Sign out" removes this app's credentials while preserving its preferred-workspace hint; your T3OS SSO session and grant remain active. Offer a separate "Sign out of T3OS everywhere" action if your product needs the Auth0 logout round-trip.
 - **No revoke button.** The dashboard links to T3OS's connected-apps settings where you can revoke. Revoking is an account-management action, not an app-level action — the app shouldn't reimplement the UI for it.
-- **Refresh on every dashboard view if the token is within 30s of expiry.** Production code might prefer to refresh on 401 instead of pre-emptively. Either is fine; this is just simpler.
+- **Refresh 30 seconds before expiry.** It happens in `/refresh`, a Route Handler, so a rotated refresh token is atomically written back to the cookie. Production code may instead refresh after a 401.
 - **No tests.** The smoke-test script in the T3OS API repo (`oauth-smoke-test.ts`) is the integration test for the wire-level flow. This app is its UI counterpart.
 
 ## License

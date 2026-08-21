@@ -15,6 +15,8 @@ export type SessionData = {
   // Set during /sign-in, read + cleared during /callback
   pkceVerifier?: string;
   oauthState?: string;
+  oidcNonce?: string;
+  oauthWorkspaceId?: string;
 
   // Set during /callback after a successful token exchange.
   //
@@ -27,7 +29,10 @@ export type SessionData = {
   refreshToken?: string;
   expiresAt?: number; // unix ms — server clock
   workspaceId?: string; // from the access-token "https://es-erp/workspace_id" claim
-  user?: { name?: string; email?: string; sub: string };
+  preferredWorkspaceId?: string;
+  preferenceUserUid?: string;
+  knownWorkspaceIds?: string[];
+  user?: { uid: string; name?: string; email?: string; sub: string };
 };
 
 const sessionOptions: SessionOptions = {
@@ -49,4 +54,32 @@ export async function getSession() {
     );
   }
   return getIronSession<SessionData>(await cookies(), sessionOptions);
+}
+
+export function clearAuthentication(session: SessionData): void {
+  delete session.accessToken;
+  delete session.refreshToken;
+  delete session.expiresAt;
+  delete session.workspaceId;
+  delete session.user;
+  delete session.pkceVerifier;
+  delete session.oauthState;
+  delete session.oidcNonce;
+  delete session.oauthWorkspaceId;
+}
+
+export function rememberWorkspace(
+  session: SessionData,
+  workspaceId: string,
+  userUid: string,
+): void {
+  if (session.preferenceUserUid !== userUid) {
+    session.knownWorkspaceIds = [];
+  }
+  session.preferenceUserUid = userUid;
+  session.preferredWorkspaceId = workspaceId;
+  session.knownWorkspaceIds = [
+    workspaceId,
+    ...(session.knownWorkspaceIds ?? []).filter((id) => id !== workspaceId),
+  ].slice(0, 5);
 }
