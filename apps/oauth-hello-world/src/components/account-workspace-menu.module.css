@@ -1,0 +1,341 @@
+.root {
+  --t3-menu-bg: #fff;
+  --t3-menu-fg: #18181b;
+  --t3-menu-muted: #71717a;
+  --t3-menu-line: #e4e4e7;
+  --t3-menu-soft: #f4f4f5;
+  --t3-menu-selected: #f4f4f5;
+  --t3-menu-selected-border: #d4d4d8;
+  --t3-menu-accent: #18181b;
+  --t3-menu-success: #16a34a;
+  --t3-menu-trigger-bg: #fff;
+  --t3-menu-trigger-fg: #18181b;
+  --t3-menu-trigger-border: #e4e4e7;
+  position: relative;
+  color: var(--t3-menu-fg);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.root * {
+  box-sizing: border-box;
+}
+.root button,
+.root input {
+  font: inherit;
+}
+
+.trigger {
+  display: flex;
+  width: 300px;
+  max-width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--t3-menu-trigger-border);
+  border-radius: 10px;
+  background: var(--t3-menu-trigger-bg);
+  color: var(--t3-menu-trigger-fg);
+  cursor: pointer;
+}
+
+.trigger:hover {
+  background: #fafafa;
+}
+
+.trigger:focus-visible,
+.workspaceRow:focus-visible,
+.footerAction:focus-visible,
+.signOut:focus-visible,
+.menuTitle:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--t3-menu-accent) 38%, transparent);
+  outline-offset: 2px;
+}
+
+.trigger > svg {
+  width: 18px;
+  flex: 0 0 18px;
+  color: #71717a;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  transition: transform 160ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+.currentName {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar {
+  display: grid;
+  overflow: hidden;
+  flex: 0 0 auto;
+  place-items: center;
+  object-fit: cover;
+}
+.workspaceAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+}
+.compactAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+.workspaceFallback {
+  background: #f4f4f5;
+  color: #3f3f46;
+  font-size: 15px;
+  font-weight: 700;
+}
+.userAvatar {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #c9d0db;
+}
+.userFallback {
+  background: linear-gradient(140deg, #315b9b, #1c2c49);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 50;
+  width: 390px;
+  max-width: min(390px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid var(--t3-menu-line);
+  border-radius: 12px;
+  background: var(--t3-menu-bg);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 12%);
+}
+
+.menuHeader {
+  padding: 15px 18px 11px;
+}
+.menuTitle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #71717a;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menuTitle:hover {
+  background: transparent;
+  color: #3f3f46;
+}
+.menuTitle svg,
+.search svg {
+  width: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7c8798;
+}
+.search input {
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  border-bottom: 1px solid var(--t3-menu-line);
+  outline: none;
+  color: var(--t3-menu-fg);
+}
+.search input::placeholder {
+  color: #98a2b3;
+}
+
+.workspaceList {
+  display: grid;
+  max-height: min(390px, calc(100vh - 310px));
+  gap: 4px;
+  overflow-y: auto;
+  padding: 0 10px 10px;
+}
+.workspaceRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--t3-menu-fg);
+  text-decoration: none;
+}
+.workspaceRow:hover {
+  background: var(--t3-menu-soft);
+}
+.currentWorkspace {
+  border-color: var(--t3-menu-selected-border);
+  background: var(--t3-menu-selected);
+}
+.workspaceCopy,
+.accountCopy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.workspaceCopy strong,
+.workspaceCopy small,
+.accountCopy strong,
+.accountCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspaceCopy strong {
+  font-size: 14px;
+}
+.workspaceCopy small {
+  margin-top: 3px;
+  color: var(--t3-menu-muted);
+  font-size: 11px;
+}
+.check {
+  color: var(--t3-menu-success);
+  font-size: 20px;
+  font-weight: 900;
+}
+.empty {
+  margin: 8px;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--t3-menu-soft);
+  color: var(--t3-menu-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.menuFooter {
+  padding: 10px;
+  border-top: 1px solid #edf0f4;
+}
+.footerAction {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 10px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+}
+.footerAction:hover {
+  background: #f5f7fa;
+}
+.footerAction > span {
+  font-size: 19px;
+  font-weight: 400;
+}
+.divider {
+  height: 1px;
+  margin: 4px -10px 10px;
+  background: #edf0f4;
+}
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px;
+}
+.accountCopy strong {
+  font-size: 13px;
+}
+.accountCopy small {
+  margin-top: 2px;
+  color: var(--t3-menu-muted);
+  font-size: 10px;
+}
+.accountRow form {
+  margin: 0;
+}
+.signOut {
+  padding: 8px 11px;
+  border: 1px solid #d5dae3;
+  border-radius: 9px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+.signOut:hover {
+  border-color: #f4a4a4;
+  background: #fff7f7;
+  color: #b42318;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (max-width: 640px) {
+  .trigger {
+    width: auto;
+    max-width: min(68vw, 300px);
+  }
+  .currentName {
+    max-width: 130px;
+  }
+  .menu {
+    position: fixed;
+    top: 78px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger > svg {
+    transition: none;
+  }
+}

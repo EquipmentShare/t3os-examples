@@ -3,13 +3,21 @@ import { env } from '@/lib/env';
 import { gql } from '@/lib/graphql';
 import { getSession } from '@/lib/session';
 import { verifyDelegatedAccessToken } from '@/lib/verify';
-import {
-  fallbackWorkspaceName,
-  WorkspaceSwitcher,
-  type WorkspaceOption,
-} from '@/components/workspace-switcher';
+import { AccountWorkspaceMenu } from '@/components/account-workspace-menu';
 
 export const dynamic = 'force-dynamic';
+
+function fallbackWorkspaceName(workspaceId: string) {
+  const suffix = workspaceId.length > 12 ? workspaceId.slice(-8) : workspaceId;
+  return `Workspace ${suffix}`;
+}
+
+interface WorkspaceOption {
+  workspaceId: string;
+  name: string;
+  description?: string;
+  logoUrl?: string;
+}
 
 // Single GraphQL round-trip pulling both the workspace summary and the first
 // few contacts. Both selections share the same auth check — bundling them
@@ -117,18 +125,41 @@ export default async function Dashboard() {
       workspaceId,
       name: fallbackWorkspaceName(workspaceId),
     }));
-  const workspaceOptions = [
+  const workspaceOptions: WorkspaceOption[] = [
     currentWorkspace,
     ...rememberedWorkspaces.filter((workspace) => workspace.workspaceId !== session.workspaceId),
   ];
 
+  const accountWorkspaces = workspaceOptions.map((workspace) => ({
+    id: workspace.workspaceId,
+    name: workspace.name,
+    description: workspace.description,
+    logoUrl: workspace.logoUrl,
+    href: `/sign-in?workspace=${encodeURIComponent(workspace.workspaceId)}`,
+  }));
+
   return (
     <main>
-      <h1>Signed in to T3OS</h1>
-      <p className="subtitle">
-        The OAuth round-trip succeeded. Below are the id-token claims captured at consent time, the
-        live access-token claims, and one live GraphQL call proving the bearer token works.
-      </p>
+      <div className="dashboard-header">
+        <div>
+          <h1>Signed in to T3OS</h1>
+          <p className="subtitle">
+            The OAuth round-trip succeeded. Below are the id-token claims captured at consent time,
+            the live access-token claims, and one live GraphQL call proving the bearer token works.
+          </p>
+        </div>
+        <AccountWorkspaceMenu
+          currentWorkspaceId={session.workspaceId}
+          workspaces={accountWorkspaces}
+          user={{
+            name: session.user.name ?? session.user.email ?? 'T3OS user',
+            email: session.user.email,
+            pictureUrl: session.user.picture,
+          }}
+          connectWorkspaceHref="/sign-in?choose=1"
+          signOutAction="/sign-out"
+        />
+      </div>
 
       <h2>From the id token (at consent time)</h2>
       <div className="card">
@@ -206,12 +237,6 @@ export default async function Dashboard() {
         <a className="button" href="/dashboard">
           Refresh data
         </a>
-        <form action="/sign-out" method="post" style={{ display: 'inline' }}>
-          <button type="submit" className="button button-secondary">
-            Sign out
-          </button>
-        </form>
-        <WorkspaceSwitcher workspaces={workspaceOptions} currentWorkspaceId={session.workspaceId} />
         <a
           className="button button-secondary"
           href={`${env.webUrlBase()}/app/${session.workspaceId}/settings/connected-apps`}

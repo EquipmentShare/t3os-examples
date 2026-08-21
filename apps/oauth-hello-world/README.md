@@ -43,11 +43,13 @@ src/
 │   ├── callback/route.ts       # Step 2: exchange, verify tokens/target, remember workspace
 │   ├── dashboard/page.tsx      # Step 3: display claims + run one GraphQL call
 │   ├── refresh/route.ts        # Persists access + rotated refresh token in a writable context
-│   ├── workspaces/page.tsx     # Recent-workspace switcher + explicit new choice
+│   ├── workspaces/page.tsx     # Legacy chooser URL; redirects to the dashboard menu
 │   ├── sign-out/route.ts       # Clears credentials; preserves workspace preference
 │   ├── privacy/page.tsx        # Required by T3OS marketplace registration
 │   ├── terms/page.tsx          # Required by T3OS marketplace registration
 │   └── globals.css
+├── components/
+│   └── account-workspace-menu.tsx # Copy-owned T3OS UI registry source
 └── lib/
     ├── env.ts                  # Type-safe env-var reads
     ├── session.ts              # iron-session config + helper
@@ -87,6 +89,14 @@ src/
 - Signing out clears this app's credentials but remembers the preferred workspace. Signing in again can reuse the exact active grant without showing consent.
 - `Choose another workspace` deliberately omits the target so T3OS can disambiguate. The example remembers five recent workspace ids in its encrypted cookie; production apps should persist user/workspace connections server-side.
 - Consent correctly returns when scopes change, a grant is revoked, the user loses access, or no exact grant exists.
+
+## Shared account/workspace UI
+
+The dashboard uses the public [`account-workspace-menu`](https://github.com/EquipmentShare/t3os-ui-registry) registry item. Its source is installed into this app with shadcn and adapted using verified session/workspace metadata; tokens and fetching remain server-side.
+
+```bash
+pnpm dlx shadcn@latest add EquipmentShare/t3os-ui-registry/account-workspace-menu
+```
 
 ## Things this hello-world deliberately doesn't do
 

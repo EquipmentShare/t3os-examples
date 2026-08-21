@@ -33,7 +33,7 @@ export type SessionData = {
   preferenceUserUid?: string;
   knownWorkspaceIds?: string[];
   knownWorkspaces?: Array<{ workspaceId: string; name: string }>;
-  user?: { uid: string; name?: string; email?: string; sub: string };
+  user?: { uid: string; name?: string; email?: string; picture?: string; sub: string };
 };
 
 const sessionOptions: SessionOptions = {
