@@ -239,19 +239,30 @@
   margin: 0;
 }
 .signOut {
-  padding: 6px 9px;
-  border: 1px solid #d5dae3;
-  border-radius: 7px;
-  background: #fff;
-  color: #344054;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #52525b;
   cursor: pointer;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 600;
+}
+.signOut svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 .signOut:hover {
-  border-color: #f4a4a4;
-  background: #fff7f7;
-  color: #b42318;
+  background: #fff1f2;
+  color: #be123c;
 }
 .srOnly {
   position: absolute;
