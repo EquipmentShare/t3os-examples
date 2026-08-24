@@ -34,6 +34,15 @@ function SearchIcon() {
   );
 }
 
+function LogoutIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="M8 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" />
+      <path d="m12 6 4 4-4 4M16 10H8" />
+    </svg>
+  );
+}
+
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg className={open ? styles.chevronOpen : undefined} aria-hidden="true" viewBox="0 0 20 20">
@@ -236,7 +245,8 @@ export function AccountWorkspaceMenu({
               </span>
               <form action={signOutAction} method="post">
                 <button className={styles.signOut} type="submit" role="menuitem">
-                  Sign out
+                  <LogoutIcon />
+                  <span>Sign out</span>
                 </button>
               </form>
             </div>
