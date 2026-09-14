@@ -52,7 +52,8 @@ src/
 │   └── account-workspace-menu.tsx # Copy-owned T3OS UI registry source
 └── lib/
     ├── env.ts                  # Type-safe env-var reads
-    ├── session.ts              # iron-session config + helper
+    ├── session.ts              # Session data + workspace preferences
+    ├── cookie-session.ts       # Sealed session split across bounded cookies
     ├── pkce.ts                 # PKCE verifier/challenge + CSRF state generation
     ├── oauth.ts                # /authorize URL builder, token exchange, refresh
     ├── verify.ts               # Verifies issuer/audience/azp/signature/nonce/workspace claims
@@ -87,7 +88,7 @@ src/
 - The landing and `/sign-in` routes preserve that target and send it to `/authorize` as `ext-workspace-id`.
 - The callback rejects a token for any workspace other than the one requested.
 - Signing out clears this app's credentials but remembers the preferred workspace. Signing in again can reuse the exact active grant without showing consent.
-- `Choose another workspace` deliberately omits the target so T3OS can disambiguate. The example remembers five recent workspace ids in its encrypted cookie; production apps should persist user/workspace connections server-side.
+- `Choose another workspace` omits the target and sends `prompt=consent` so T3OS opens its interactive workspace picker even when one existing grant could be reused. The example remembers five recent workspace ids in its encrypted cookie; production apps should persist user/workspace connections server-side.
 - Consent correctly returns when scopes change, a grant is revoked, the user loses access, or no exact grant exists.
 
 ## Shared account/workspace UI
@@ -100,7 +101,7 @@ pnpm dlx shadcn@latest add EquipmentShare/t3os-ui-registry/account-workspace-men
 
 ## Things this hello-world deliberately doesn't do
 
-- **No multi-device sessions.** Cookie-only — bring the browser, bring the session. Production apps should store credentials and all connected workspaces server-side and keep only an opaque session id in the cookie.
+- **No multi-device sessions.** Cookie-only — bring the browser, bring the session. One iron-session ciphertext is split across at most three cookies, keeping each under 4KB even with tokens and five workspace preferences. Missing or modified chunks invalidate the entire session; sign-out removes surplus chunks. Existing single-cookie sessions migrate on their next save. Production apps should store credentials and all connected workspaces server-side and keep only an opaque session id in the cookie.
 - **No `/v2/logout` round-trip on app sign-out.** "Sign out" removes this app's credentials while preserving its preferred-workspace hint; your T3OS SSO session and grant remain active. Offer a separate "Sign out of T3OS everywhere" action if your product needs the Auth0 logout round-trip.
 - **No revoke button.** The dashboard links to T3OS's connected-apps settings where you can revoke. Revoking is an account-management action, not an app-level action — the app shouldn't reimplement the UI for it.
 - **Refresh 30 seconds before expiry.** It happens in `/refresh`, a Route Handler, so a rotated refresh token is atomically written back to the cookie. Production code may instead refresh after a 401.

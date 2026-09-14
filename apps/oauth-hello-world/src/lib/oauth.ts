@@ -26,6 +26,7 @@ export function buildAuthorizeUrl(args: {
   codeChallenge: string;
   scopes: string[];
   workspaceId?: string;
+  chooseWorkspace?: boolean;
 }): string {
   const params = new URLSearchParams({
     client_id: env.auth0ClientId(),
@@ -46,6 +47,11 @@ export function buildAuthorizeUrl(args: {
     // makes the authorization unambiguous and lets an existing exact grant
     // skip the consent screen safely.
     params.set('ext-workspace-id', args.workspaceId);
+  }
+  if (args.chooseWorkspace) {
+    // Omitting the target alone can silently reuse the sole matching grant.
+    // An explicit choice must reach T3OS's interactive workspace consent screen.
+    params.set('prompt', 'consent');
   }
   return `https://${env.auth0Domain()}/authorize?${params.toString()}`;
 }
