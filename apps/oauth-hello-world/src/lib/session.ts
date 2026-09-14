@@ -3,13 +3,14 @@
 // Why iron-session: the session blob (access token, refresh token, etc.) is
 // sealed with a server-only key and stored in an httpOnly cookie. The browser
 // holds the ciphertext; only the server can decrypt. Zero infra — no KV, no
-// database — but the trade-off is the cookie has to fit in ~4KB total.
+// database. The sealed value is split across bounded cookies so tokens plus
+// workspace preferences don't exceed the browser's 4KB per-cookie limit.
 //
 // During the OAuth round-trip we also stash the PKCE verifier and CSRF state
 // in the same session. They get cleared once the callback completes.
 
-import { getIronSession, type SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
+import { getCookieSession } from './cookie-session';
 
 export type SessionData = {
   // Set during /sign-in, read + cleared during /callback
@@ -36,17 +37,6 @@ export type SessionData = {
   user?: { uid: string; name?: string; email?: string; picture?: string; sub: string };
 };
 
-const sessionOptions: SessionOptions = {
-  password: process.env.IRON_SESSION_PASSWORD ?? '',
-  cookieName: 't3os-oauth-hello-world',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax',
-    // Default path '/' so all routes see the cookie.
-  },
-};
-
 export async function getSession() {
   if (!process.env.IRON_SESSION_PASSWORD) {
     throw new Error(
@@ -54,7 +44,11 @@ export async function getSession() {
         'and add it to .env.local (or the Vercel project env vars).',
     );
   }
-  return getIronSession<SessionData>(await cookies(), sessionOptions);
+  return getCookieSession<SessionData>(await cookies(), {
+    password: process.env.IRON_SESSION_PASSWORD,
+    cookieName: 't3os-oauth-hello-world',
+    secure: process.env.NODE_ENV === 'production',
+  });
 }
 
 export function clearAuthentication(session: SessionData): void {

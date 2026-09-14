@@ -86,7 +86,7 @@ export default async function SignedIn() {
             Sign out
           </button>
         </form>
-        <a className="button button-secondary" href={`${env.webUrlBase()}/settings/connected-apps`}>
+        <a className="button button-secondary" href={`${env.webUrlBase()}/account/connections`}>
           Manage connected apps in T3OS →
         </a>
       </div>
@@ -94,8 +94,9 @@ export default async function SignedIn() {
       <div className="footer">
         <strong>Sign out vs revoke:</strong> &quot;Sign out&quot; clears this app&apos;s session
         cookie and (if a refresh_token is present) calls Auth0&apos;s <code>/oauth/revoke</code>. It
-        does NOT clear your Auth0 SSO cookie — signing back in will skip the password prompt. To
-        fully revoke this app&apos;s grant, use the &quot;Manage connected apps&quot; link.
+        does NOT clear your Auth0 SSO cookie — signing back in will skip the password prompt. The
+        &quot;Manage connected apps&quot; link opens your T3OS account&apos;s workspace connections;
+        this sign-in-only app does not create a workspace grant.
       </div>
     </main>
   );
