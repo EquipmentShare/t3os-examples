@@ -88,7 +88,7 @@ src/
 - The landing and `/sign-in` routes preserve that target and send it to `/authorize` as `ext-workspace-id`.
 - The callback rejects a token for any workspace other than the one requested.
 - Signing out clears this app's credentials but remembers the preferred workspace. Signing in again can reuse the exact active grant without showing consent.
-- `Choose another workspace` deliberately omits the target so T3OS can disambiguate. The example remembers five recent workspace ids in its encrypted cookie; production apps should persist user/workspace connections server-side.
+- `Choose another workspace` omits the target and sends `prompt=consent` so T3OS opens its interactive workspace picker even when one existing grant could be reused. The example remembers five recent workspace ids in its encrypted cookie; production apps should persist user/workspace connections server-side.
 - Consent correctly returns when scopes change, a grant is revoked, the user loses access, or no exact grant exists.
 
 ## Shared account/workspace UI

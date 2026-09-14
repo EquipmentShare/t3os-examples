@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       // for why we chose `all_resources_reader` over a narrower scope.
       scopes: ['all_resources_reader'],
       workspaceId,
+      chooseWorkspace: chooseWorkspace && !requestedWorkspaceId,
     }),
   );
 }
